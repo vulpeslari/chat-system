@@ -1,0 +1,36 @@
+.rotbar {
+    background-color: var(--gray);
+    height: 729px;
+    width: 100px;
+    display: flex;
+    flex-direction: column; 
+    align-items: center; 
+}
+
+.user-icon {
+    height: 50px;
+    width: 50px;
+    border-radius: 100%;
+    margin: 30px;
+}
+
+.bar-icon {
+    height: 30px;
+    width: 30px;
+    color: var(--white);
+    margin: 10px;
+    padding: 10px;
+    border-radius: 100%;
+}
+
+.bar-icon :hover, .bar-icon.active {
+    color: var(--orange);
+    background-color: var(--lightgray);
+}
+
+.exit {
+    transform: rotate(-180deg);
+    margin-top: auto;
+    margin-bottom: 40px;
+}
+
