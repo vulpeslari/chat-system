@@ -1,11 +1,11 @@
-.chatbox { 
+.chatbox {
     width: 936px;
     height: 729px;
     background-color: var(--black);
     color: var(--white);
 }
 
-.no-messages { 
+.no-messages {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -25,13 +25,13 @@
 
 .with-messages .top-bar {
     background-color: var(--gray);
-    height: 100px;    
-    display:flex;
+    height: 100px;
+    display: flex;
     align-items: center;
 }
 
 .with-messages {
-    margin-left: 5px; 
+    margin-left: 5px;
 }
 
 .chat-content {
@@ -52,11 +52,33 @@
 .reply-bar {
     background-color: var(--lightgray);
     width: 85%;
-    height: 20%;
     border-radius: 20px;
     padding: 15px;
+    padding-top: 5px;
+    padding-bottom: 5px;
     display: flex;
     align-items: center;
+    transition: height 0.2s ease;
+    max-height: 60px;
+}
+
+.reply-bar textarea {
+    width: 100%;
+    resize: none;
+    overflow-y: auto;
+    border: none;
+    background-color: transparent;
+    color: var(--white);
+    font-size: 12px;
+    max-height: 50px;
+}
+
+.reply-bar textarea:focus {
+    outline: none;
+}
+
+.reply-bar textarea::-webkit-scrollbar {
+    background: transparent;
 }
 
 .send {
@@ -94,7 +116,7 @@ a {
     float: left;
     margin: auto;
     position: absolute;
-} 
+}
 
 .with-messages .chat-info {
     margin: 30px;
@@ -111,17 +133,17 @@ a {
 }
 
 .messages::-webkit-scrollbar {
-    width: 10px; 
+    width: 10px;
 }
 
 .messages::-webkit-scrollbar-track {
-    background: var(--gray); 
+    background: var(--gray);
 }
 
 .messages::-webkit-scrollbar-thumb {
-    background: var(--lightgray); 
+    background: var(--lightgray);
 }
 
 .messages::-webkit-scrollbar-thumb:hover {
-    background: var(--orange); 
+    background: var(--orange);
 }

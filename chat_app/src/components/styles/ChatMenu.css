@@ -18,17 +18,22 @@ h1 {
 
 .menu-icon {
     color: var(--white);
-    height: 26px;
-    width: 26px;
+    height: 24px;
+    width: 24px;
 }
 
-.add {
+.top-bar a {
     margin: auto;
     margin-right: 0;
+    padding: 10px;
+    border-radius: 100%;
 }
 
-.menu-icon :hover {
+.menu-icon :hover,
+.menu-icon.active {
     color: var(--orange);
+    background-color: var(--lightgray);
+    cursor: pointer;
 }
 
 .search-bar {
@@ -44,6 +49,7 @@ h1 {
 .search { 
     width: 18px;
     margin-right: 15px;
+    margin-top: 3px;
 }
 
 input {
@@ -51,6 +57,14 @@ input {
     border: 0;
     color: var(--white);
     outline: none;
+}
+
+input[type="text"] {
+    width: 87%;
+}
+
+.search-bar input[type="text"] {
+    width: 93%;
 }
 
 .user-list {

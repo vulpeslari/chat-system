@@ -3,8 +3,8 @@
     height: 729px;
     width: 100px;
     display: flex;
-    flex-direction: column; 
-    align-items: center; 
+    flex-direction: column;
+    align-items: center;
 }
 
 .user-icon {
@@ -23,9 +23,11 @@
     border-radius: 100%;
 }
 
-.bar-icon :hover, .bar-icon.active {
+.bar-icon :hover,
+.bar-icon.active {
     color: var(--orange);
     background-color: var(--lightgray);
+    cursor: pointer;
 }
 
 .exit {
@@ -33,4 +35,3 @@
     margin-top: auto;
     margin-bottom: 40px;
 }
-

@@ -1,21 +1,35 @@
-import React from 'react';
-import "./styles/ChatBox.css"
+import React, { useState, useRef, useEffect } from 'react';
+import "./styles/ChatBox.css";
 import { IoSend } from "react-icons/io5";
-import { SlOptionsVertical } from "react-icons/sl";
-
-import Message from "./Message"
+import Message from "./Message";
+import Dropdown from "./Dropdown";
 
 const ChatBox = () => {
+    const [message, setMessage] = useState("");
+    const replyBarRef = useRef(null);
+    const chatContentRef = useRef(null);
+
+    const handleInputChange = (e) => {
+        const textarea = e.target;
+        setMessage(textarea.value);
+
+        // AJUSTE DE ALTURA DO TEXTAREA DA REPLY
+        textarea.style.height = 'auto'; 
+        textarea.style.height = `${textarea.scrollHeight}px`; 
+
+        // AJUSTE DA DIV REPLY-BAR CONFORME O TEXTAREA DA REPLY AUMENTA
+        if (replyBarRef.current) {
+            replyBarRef.current.style.height = `${textarea.scrollHeight}px`;
+        }  
+    };
+
+    const options = [
+        { label: 'Excluir Grupo', route: '/delete-chat' },
+        { label: 'Editar Grupo', route: '/edit-chat' },
+    ];
+
     return (
         <div className='chatbox'>
-            {/*<div className='no-messages'>
-                <h2>
-                    Você ainda não tem conversas.
-                </h2>
-                <h3>
-                    Adicione um contato e crie um chat para começar a conversar.
-                </h3>
-            </div>*/}
             <div className='with-messages'>
                 <div className='top-bar'>
                     <div className='chat-info'>
@@ -23,9 +37,9 @@ const ChatBox = () => {
                         <h1>group name</h1>
                         <h2>group people</h2>
                     </div>
-                    <SlOptionsVertical className='bar-icon user-options' />
+                    <Dropdown options={options} className='chatbox-dropdown'/>
                 </div>
-                <div className='chat-content'>
+                <div className='chat-content' ref={chatContentRef}>
                     <div className='backup-msg'>
                         <h4>O backup automático está ativado. Suas mensagens serão salvas a cada 30 dias. Para desativar o backup automático, clique <a>aqui</a>.
                         </h4>
@@ -38,16 +52,19 @@ const ChatBox = () => {
                     </div>
                 </div>
                 <div className='foot-bar'>
-                    <div className='reply-bar'>
-                        <input type='text' placeholder='Escreva aqui sua mensagem'>
-                        </input>
+                    <div className='reply-bar' ref={replyBarRef}>
+                        <textarea 
+                          value={message} 
+                          onChange={handleInputChange}
+                          placeholder='Escreva aqui sua mensagem.' 
+                          rows={1}
+                        />
                     </div>
                     <IoSend className='menu-icon send' />
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default ChatBox
-
+export default ChatBox;
