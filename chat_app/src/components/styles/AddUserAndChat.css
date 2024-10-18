@@ -20,6 +20,7 @@
 .pop-up .top-bar {
     display: flex;
     flex-direction: row;
+    margin-top: -10px;
 }
 
 .pop-up .top-bar h1 {
@@ -33,7 +34,7 @@
 .pop-up .add-container {
     padding: 10px;
     padding-top: 0;
-    height: 300px;
+    height: 310px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -102,7 +103,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 150px;
+    width: 170px;
     height: 30px;
     border-radius: 20px;
     border: none;
