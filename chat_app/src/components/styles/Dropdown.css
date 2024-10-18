@@ -39,12 +39,9 @@
 
 .chatbox-dropdown {
     font-size: 24px;
-    margin-left: 380px;
+    margin-left: 640px;
     margin-bottom: 20px;
+    position: fixed;
 }
 
-.chatbox-dropdown .dropdown-menu {
-    margin-top: 46px;
-    padding-right: 10px;
-}
 

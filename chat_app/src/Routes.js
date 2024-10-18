@@ -1,45 +1,69 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Route, BrowserRouter, Routes as RouterRoutes } from "react-router-dom";
 
 import RotBar from "./components/RotBar";
 import ChatMenu from "./components/ChatMenu";
 import ChatBox from "./components/ChatBox";
-import AddChat from "./components/AddChat"
-import AddUser from "./components/AddUser"
+import AddChat from "./components/AddChat";
+import AddUser from "./components/AddUser";
 
 const Routes = () => {
     return (
         <BrowserRouter>
             <RouterRoutes>
-                <Route path="/" element={<>
+                {/* HOME */}
+                <Route path={`/:userId`} element={<>
                     <div className="home-container">
-                        <RotBar  />
+                        <RotBar />
                         <ChatMenu />
                         <ChatBox />
                     </div>
-                </>
-                } />
-                <Route path="/add-chat" element={<>
+                </>} />
+
+                {/* CHAT */}
+                <Route path={`/:userId/chat/:chatId`} element={<>
+                    <div className="home-container">
+                        <RotBar />
+                        <ChatMenu />
+                        <ChatBox />
+                    </div>
+                </>} />
+
+                {/* ADD CHAT */}
+                <Route path={`/:userId/add-chat`} element={<>
                     <div className="home-container">
                         <AddChat />
-                        <RotBar  />
+                        <RotBar />
                         <ChatMenu />
                         <ChatBox />
                     </div>
-                </>
-                } />
-                <Route path="/add-user" element={<>
+                </>} />
+
+                {/* EDIT CHAT */}
+                <Route path={`/:userId/edit-chat/:chatId`} element={<>
+                    <div className="home-container">
+                        <AddChat />
+                        <RotBar />
+                        <ChatMenu />
+                        <ChatBox />
+                    </div>
+                </>} />
+
+                {/* ADD USER */}
+                <Route path={`/:userId/add-user`} element={<>
                     <div className="home-container">
                         <AddUser />
-                        <RotBar  />
+                        <RotBar />
                         <ChatMenu />
                         <ChatBox />
                     </div>
-                </>
-                } />
+                </>} />
+
             </RouterRoutes>
         </BrowserRouter>
     );
 };
 
 export default Routes;
+
+

@@ -70,6 +70,7 @@ input[type="text"] {
 .user-list {
     padding-top: 25px;
     margin-top: 25px;
+    width: 107.5%;
     border-top: 3px solid var(--gray);
     overflow-y: scroll;
     height: 500px;
@@ -89,4 +90,8 @@ input[type="text"] {
 
 .user-list::-webkit-scrollbar-thumb:hover {
     background: var(--orange); 
+}
+
+.user-list a {
+    text-decoration: none;
 }

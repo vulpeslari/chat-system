@@ -1,17 +1,18 @@
 import React from 'react'
 import "./styles/UserAndChat.css"
 
-const UserSelect = () => {
+const UserSelect = ({ contactName, contactStatus, isSelected, onSelect }) => {
     return (
-        <div className='user-select-container'>
-            <input type='checkbox'></input>
-            <img className="user-icon" src="/img/user-icon.jpg" />
+        <div className='user-select-container' onClick={onSelect}>
+            <input type='checkbox' checked={isSelected} readOnly />
+            <img className="user-icon" src="/img/user-icon.jpg" alt={contactName} />
             <div className='user-info'>
-                <h2>@user123</h2>
-                <h3>online</h3>
+                <h2>{contactName}</h2>
+                <h3>{contactStatus}</h3>
             </div>
         </div>
-    )
-}
+    );
+};
+
 
 export default UserSelect
