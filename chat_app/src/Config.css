@@ -19,6 +19,3 @@
   display: flex;
 }
 
-::selection {
-  background-color: var(--orange);
-}
