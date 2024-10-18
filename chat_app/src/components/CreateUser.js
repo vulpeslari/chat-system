@@ -1,11 +1,9 @@
 import React from 'react'
 import "./styles/CreateUser.css"
 
-import UserOption from "./UserOption"
-
-import { Link } from 'react-router-dom';
-import { IoSearch } from "react-icons/io5";
-import { IoCloseSharp } from "react-icons/io5";
+function cadastro(){
+   
+}
 
 const CreateUser = () => {
     return (
@@ -18,22 +16,24 @@ const CreateUser = () => {
                 <img src="..\..\public\img\user-icon.jpg"></img>
             </div>
 
-            <div className='text-bar'>
-                <h3>Nome de Usuário</h3>
-                <input type='text'></input>
-            </div>
+            <form className="formulario" method="POST">
+                <div className='text-bar'>
+                    <h3>Nome de Usuário</h3>
+                    <input type='text' name='name'></input>
+                </div>
 
-            <div className='text-bar'>
-                <h3>Endereço de e-mail</h3>
-                <input type='text'></input>
-            </div>
+                <div className='text-bar'>
+                    <h3>Endereço de e-mail</h3>
+                    <input type='text' name='email'></input>
+                </div>
 
-            <div className='text-bar'>
-                <h3>Senha</h3>
-                <input type='text'></input>
-            </div>
+                <div className='text-bar'>
+                    <h3>Senha</h3>
+                    <input type='text' name="pass"></input>
+                </div>
 
-            <button>Cadastrar</button>
+                <input type="submit" className='submit'>Cadastrar</input>
+            </form>
         </div>
     )
 }
