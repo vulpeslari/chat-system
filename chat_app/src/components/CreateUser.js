@@ -1,11 +1,21 @@
 import React from 'react'
+import { useEffect } from 'react';
 import "./styles/CreateUser.css"
 
-function cadastro(){
-   
-}
-
 const CreateUser = () => {
+
+    useEffect(() => {
+        nome = document.getElementsByClassName(nome);
+        senha = document.getElementsByClassName(pass);
+        email = document.getElementsByClassName(email);
+
+        let content = '{"nome": "'+nome+'", "email": "'+email+'", "senha": "'+senha+'"}';
+        print(content);
+
+        
+
+    } ,[document.getElementsByClassName(submit)])
+
     return (
         <div className='square'>
             <div className='top-bar'>
@@ -16,10 +26,10 @@ const CreateUser = () => {
                 <img src="..\..\public\img\user-icon.jpg"></img>
             </div>
 
-            <form className="formulario" method="POST">
+            <form className="formulario" method="POST" >
                 <div className='text-bar'>
                     <h3>Nome de Usuário</h3>
-                    <input type='text' name='name'></input>
+                    <input type='text' name='nome'></input>
                 </div>
 
                 <div className='text-bar'>
