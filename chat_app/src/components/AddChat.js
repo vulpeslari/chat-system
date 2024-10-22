@@ -1,114 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import "./styles/AddUserAndChat.css";
-import UserSelect from "./UserSelect";
+import './styles/AddUserAndChat.css';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { IoSearch } from "react-icons/io5";
-import { IoCloseSharp } from "react-icons/io5";
-import { IoIosAdd } from "react-icons/io";
+import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
-
-import contactsData from './../pseudobd/contacts.json';
-import usersData from './../pseudobd/users.json';
-import chatsData from './../pseudobd/chats.json';
+import { IoIosAdd } from "react-icons/io";
+import UserSelect from './UserSelect';
+import { LineWave } from 'react-loader-spinner';
 
 const AddChat = () => {
-    const { userId, chatId } = useParams(); 
+    const { userId, chatId } = useParams();
     const navigate = useNavigate();
-    const users = usersData;
     const [searchTerm, setSearchTerm] = useState('');
-    const [chatName, setChatName] = useState('');
+    const [nomeGrupo, setNomeGrupo] = useState('');
     const [selectedUsers, setSelectedUsers] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isGroupChat, setIsGroupChat] = useState(false);
 
     useEffect(() => {
-        if (chatId) {
-            const chatToEdit = chatsData.find(chat => chat.id === chatId);
-            if (chatToEdit) {
-                setChatName(chatToEdit.chatName);
-                setSelectedUsers(chatToEdit.chatUsers.filter(id => id !== userId));
+        setIsGroupChat(selectedUsers.length > 1);
+    }, [selectedUsers]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/getAllUsers');
+                const data = await response.json();
+                setUsers(data);
+            } catch (error) {
+                console.error('Erro ao buscar usuários:', error);
+            } finally {
+                setIsLoading(false);
             }
-        }
-    }, [chatId, userId]);
+        };
+        fetchUsers();
+    }, []);
 
-    const getUserOptions = () => {
-        return contactsData.map(contact => {
-            const user = users.find(user => user.userId === contact.contactId);
-            return user ? { userId: user.userId, userName: user.username } : null;
-        }).filter(option => option !== null);
-    };
-
-    const filteredUsers = getUserOptions().filter(option =>
-        option.userName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = users
+        .filter(user => user.id !== userId)
+        .filter(user => user.nome.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const handleUserSelect = (userId) => {
-        if (selectedUsers.includes(userId)) {
-            setSelectedUsers(selectedUsers.filter(id => id !== userId));
-        } else {
-            setSelectedUsers([...selectedUsers, userId]);
-        }
-    };
-
-    const generateRandomId = () => Math.random().toString(36).substr(2, 9);
-
-    const createChat = () => {
-        console.log('Chat Name:', chatName);
-        console.log('Selected Users:', selectedUsers);
-
-        if (chatName.trim() === '' || selectedUsers.length === 0) {
-            alert('Por favor, preencha o nome do chat e selecione pelo menos um usuário.');
-            return;
-        }
-
-        const newChat = {
-            id: generateRandomId(),
-            chatName,
-            chatUsers: [userId, ...selectedUsers]
-        };
-
-        const updatedChats = [...chatsData, newChat];
-        const updatedData = JSON.stringify(updatedChats, null, 2);
-        const blob = new Blob([updatedData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'chats.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        console.log('Novo chat criado:', newChat);
-        navigate(`/${userId}`);
-    };
-
-    const updateChat = () => {
-        console.log('Updating Chat:', chatName);
-        console.log('Selected Users:', selectedUsers);
-
-        if (chatName.trim() === '' || selectedUsers.length === 0) {
-            alert('Por favor, preencha o nome do chat e selecione pelo menos um usuário.');
-            return;
-        }
-
-        const updatedChats = chatsData.map(chat =>
-            chat.id === chatId
-                ? { ...chat, chatName, chatUsers: [userId, ...selectedUsers] }
-                : chat
+        setSelectedUsers(prevSelectedUsers =>
+            prevSelectedUsers.includes(userId)
+                ? prevSelectedUsers.filter(id => id !== userId)
+                : [...prevSelectedUsers, userId]
         );
+    };
 
-        const updatedData = JSON.stringify(updatedChats, null, 2);
-        const blob = new Blob([updatedData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+    const handleSubmit = async () => {
+        const url = chatId 
+            ? 'https://api-itjc4yhhoq-uc.a.run.app/updateChat' // DEPOIS TEM QUE ADAPTAR QUANDO TIVER A ROTA COMPLETA
+            : isGroupChat
+                ? 'https://api-itjc4yhhoq-uc.a.run.app/createChatGroup'
+                : 'https://api-itjc4yhhoq-uc.a.run.app/createChat';
+        
+        if (isGroupChat && nomeGrupo.trim() === '') {
+            alert('Por favor, preencha o nome do grupo.');
+            return;
+        }
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'chats.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const payload = isGroupChat
+            ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
+            : { idUsers: [userId, selectedUsers[0]] };
 
-        console.log('Chat atualizado:', chatId);
-        navigate(`/${userId}`);
+        try {
+            const response = await fetch(url, {
+                method: chatId ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            console.log(chatId ? 'Chat atualizado:' : isGroupChat ? 'Chat em grupo criado:' : 'Chat individual criado:', data);
+            navigate(`/${userId}`);
+        } catch (error) {
+            console.error('Erro ao criar/atualizar chat:', error);
+        }
     };
 
     return (
@@ -126,56 +93,64 @@ const AddChat = () => {
                 <input
                     type='text'
                     id='search'
-                    placeholder='Pesquisar contatos'
+                    placeholder='Pesquisar usuários'
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
             <div className='add-container'>
-                <div className='chat-info'>
-                    <h2>Foto do Chat</h2>
-                    <div className='chat-photo-container'>
-                        <label htmlFor='chat-photo'>
-                            <img className="chat-icon" src="/img/user-icon.jpg" alt="chat icon" />
-                        </label>
-                        <input id='chat-photo' type='file'></input>
-                    </div>
-                    <h2>Nome do Chat</h2>
-                    <div className='chat-name-container'>
-                        <input
-                            id='chat-name'
-                            type='text'
-                            placeholder='Dê um nome ao grupo'
-                            value={chatName}
-                            onChange={(e) => setChatName(e.target.value)}
-                        />
-                        <label htmlFor='chat-name'>
-                            <FaPen className='menu-icon' />
-                        </label>
-                    </div>
-                </div>
-                <div className='users-select'>
-                    <h2>Membros do Chat</h2>
-                    <div className='users-select-list'>
-                        {filteredUsers.map((option, index) => (
-                            <UserSelect
-                                key={index}
-                                contactName={option.userName}
-                                contactStatus={"online"}
-                                isSelected={selectedUsers.includes(option.userId)}
-                                onSelect={() => handleUserSelect(option.userId)}
-                            />
-                        ))}
-                    </div>
-                </div>
+                {isLoading ? (
+                    <LineWave visible={true} height="130" width="130" color="var(--orange)" ariaLabel="line-wave-loading" />
+                ) : (
+                    <>
+                        {isGroupChat && (
+                            <div className='chat-info'>
+                                <h2>Foto do Chat</h2>
+                                <div className='chat-photo-container'>
+                                    <label htmlFor='chat-photo'>
+                                        <img className="chat-icon" src="/img/user-icon.jpg" alt="chat icon" />
+                                    </label>
+                                    <input id='chat-photo' type='file' />
+                                </div>
+                                <h2>Nome do Grupo</h2>
+                                <div className='chat-name-container'>
+                                    <input
+                                        id='chat-name'
+                                        type='text'
+                                        placeholder='Dê um nome ao grupo'
+                                        value={nomeGrupo}
+                                        onChange={(e) => setNomeGrupo(e.target.value)}
+                                    />
+                                    <label htmlFor='chat-name'>
+                                        <FaPen className='menu-icon' />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                        <div className='users-select'>
+                            <h2>Membros do Chat</h2>
+                            <div className='users-select-list'>
+                                {filteredUsers.map((user, index) => (
+                                    <UserSelect
+                                        key={index}
+                                        contactName={user.nome}
+                                        contactStatus="online"
+                                        isSelected={selectedUsers.includes(user.id)}
+                                        onSelect={() => handleUserSelect(user.id)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
             <div className='footer'>
-                <button className='button' onClick={chatId ? updateChat : createChat}>
+                <button className='button' onClick={handleSubmit}>
                     {chatId ? 'Salvar alterações' : 'Criar chat'} <IoIosAdd className='button-icon' />
                 </button>
             </div>
         </div>
     );
-}
+};
 
 export default AddChat;

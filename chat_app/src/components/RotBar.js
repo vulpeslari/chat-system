@@ -12,12 +12,11 @@ const RotBar = () => {
 
   return (
     <div className="rotbar">
-      <img className="user-icon" src="/img/user-icon.jpg" alt="User" />
+      <Link to={`/${userId}/user`}>
+        <img className="user-icon" src="/img/user-icon.jpg" alt="User" />
+      </Link>
       <Link to={`/${userId}`}>
         <RiMessageFill className={`bar-icon ${location.pathname === `/${userId}` ? 'active' : ''}`} />
-      </Link>
-      <Link to={`/${userId}/add-user`}>
-        <IoPersonAdd className={`bar-icon ${location.pathname === `/${userId}/add-user` ? 'active' : ''}`} />
       </Link>
       <Link to={'/'}>
         <BiSolidExit className='bar-icon exit' />

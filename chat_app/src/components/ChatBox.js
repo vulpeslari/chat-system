@@ -6,10 +6,6 @@ import Message from "./Message";
 import Dropdown from "./Dropdown";
 import { LineWave } from 'react-loader-spinner';
 
-import chatsData from './../pseudobd/chats.json';
-import usersData from './../pseudobd/users.json';
-import messagesData from './../pseudobd/messages.json';
-
 const ChatBox = () => {
     const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
@@ -17,42 +13,62 @@ const ChatBox = () => {
     const replyBarRef = useRef(null);
     const chatContentRef = useRef(null);
     const { userId, chatId } = useParams();
-    const [users, setUsers] = useState(usersData);
+    const [users, setUsers] = useState([]);
 
-    {/* CHAT FETCH */ }
+    // FETCH USERS DATA
     useEffect(() => {
-        if (chatId) {
-            const chat = chatsData.find(c => c.id === chatId);
-            setCurrentChat(chat);
-        }
-    }, [chatId]);
-
-    {/* MESSAGES FETCH */ }
-    useEffect(() => {
-        if (chatId) {
-            const chatMessages = messagesData.filter(msg => msg.chatId === chatId);
-            setMessages(chatMessages);
-        }
-    }, [chatId]);
-
-    {/* USERS FETCH */ }
-    const getUsernamesFromIds = (chatUserIds) => {
-        const usernames = chatUserIds.map(id => {
-            if (id === userId) {
-                return 'you';
+        const fetchUsers = async () => {
+            try {
+                const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/getAllUsers');
+                const usersData = await response.json();
+                setUsers(usersData);
+            } catch (error) {
+                console.error('Erro ao buscar usuários:', error);
             }
-            const user = users.find(u => u.userId === id);
-            return user ? " @" + user.username : id;
-        });
+        };
+
+        fetchUsers();
+    }, []);
+
+    // FETCH CHAT AND MESSAGES
+    useEffect(() => {
+        const fetchChatAndMessages = async () => {
+            if (!chatId) return;
+
+            try {
+                const chatsResponse = await fetch(`https://api-itjc4yhhoq-uc.a.run.app/getAllChats?idUser=${userId}`);
+                const chatsData = await chatsResponse.json();
+                const chat = chatsData.find(c => c.id === chatId);
+                setCurrentChat(chat || null);
+
+                const messagesResponse = await fetch(`https://api-itjc4yhhoq-uc.a.run.app/getAllMessages?idChat=${chatId}`);
+                if (messagesResponse.ok) {
+                    const messagesData = await messagesResponse.json();
+                    setMessages(Array.isArray(messagesData) ? messagesData : []);
+                } else {
+                    setMessages([]);
+                }
+            } catch (error) {
+                console.error('Erro ao buscar chats ou mensagens:', error);
+            }
+        };
+
+        fetchChatAndMessages();
+    }, [chatId, userId]);
+
+    // GET USERNAMES FROM IDS
+    const getUsernamesFromIds = (chatUserIds) => {
+        const currentUser = users.find(u => u.id === userId);
+        const usernames = chatUserIds.map(name => (name === currentUser.nome ? 'you' : `@${name}`));
 
         if (usernames.length > 1) {
             return `${usernames.slice(0, -1).join(', ')} e ${usernames[usernames.length - 1]}`;
         }
 
-        return usernames[0];
+        return usernames[0] || 'Usuário desconhecido';
     };
 
-    {/* MESSAGE HANDLERS */ }
+    // MESSAGE HANDLERS
     const handleInputChange = (e) => {
         const textarea = e.target;
         setMessage(textarea.value);
@@ -65,41 +81,63 @@ const ChatBox = () => {
         }
     };
 
-    {/* SEND MESSAGE */ }
-    const handleSendMessage = () => {
-        if (message.trim() !== "") {
+    const sendMessageToAPI = async (newMessage) => {
+        try {
+            const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/sendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newMessage),
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao enviar a mensagem');
+            }
+
+            return await response.text();
+        } catch (error) {
+            console.error('Erro ao enviar mensagem:', error);
+        }
+    };
+
+    const handleSendMessage = async () => {
+        if (message.trim()) {
             const newMessage = {
-                messageId: Math.random().toString(36).substr(2, 9),
-                chatId,
-                userId: userId,
-                content: message,
+                idChat: chatId,
+                idUser: userId,
+                message,
                 timestamp: new Date().toISOString(),
-                status: 'unseen' // TODA MENSAGEM COMEÇA SEM SER VISTA 
-            }; 
+            };
 
-            const updatedMessages = [...messagesData, newMessage];
-            const updatedData = JSON.stringify(updatedMessages, null, 2);
-            const blob = new Blob([updatedData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'messages.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            setMessages([...messages, newMessage]);
+            await sendMessageToAPI(newMessage);
+            setMessages(prevMessages => [...prevMessages, { ...newMessage, status: 'unseen' }]);
             setMessage("");
         }
     };
 
-    {/* SEND MESSAGE WITH CTRL + ENTER */ }
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && e.ctrlKey) {
             e.preventDefault();
             handleSendMessage();
         }
+    };
+
+    const renderChatHeader = () => {
+        if (!currentChat) return null;
+
+        const currentUser = users.find(user => user.id === userId);
+        const otherUserName = currentChat.idParticipants.find(name => {
+            const user = users.find(u => u.nome === name);
+            return user && user.nome !== currentUser?.nome;
+        });
+
+        return (
+            <>
+                <h1>{currentChat.idParticipants.length === 2 ? `@${otherUserName || 'Usuário desconhecido'}` : currentChat.nome}</h1>
+                <h2>{currentChat.idParticipants.length === 2 ? 'ㅤ' : getUsernamesFromIds(currentChat.idParticipants)}</h2>
+            </>
+        );
     };
 
     return (
@@ -114,29 +152,38 @@ const ChatBox = () => {
                     <div className='top-bar'>
                         <div className='chat-info'>
                             <img className="user-icon" src="/img/user-icon.jpg" alt="User Icon" />
-                            <h1>{currentChat.chatName}</h1>
-                            <h2>{getUsernamesFromIds(currentChat.chatUsers)}</h2>
+                            {renderChatHeader()}
                         </div>
                         <Dropdown className='chatbox-dropdown' options={[
                             { label: 'Excluir Grupo', route: `/${userId}/delete-chat/${chatId}` },
                             { label: 'Editar Grupo', route: `/${userId}/edit-chat/${chatId}` }
                         ]} />
                     </div>
+
+                    <div className='backup-msg'>
+                        <h4>As mensagens enviadas e recebidas são salvas automaticamente a cada 30 dias.</h4>
+                    </div>
                     <div className='chat-content' ref={chatContentRef}>
                         <div className='messages'>
-                            {messages.map((msg, index) => {
-                                const user = users.find(u => u.userId === msg.userId);
-                                return (
-                                    <Message
-                                        key={msg.messageId}
-                                        type={msg.userId === userId ? 'reply' : 'received'}
-                                        content={msg.content}
-                                        timestamp={msg.timestamp}
-                                        status={msg.status}
-                                        username={user.username}
-                                    />
-                                );
-                            })}
+                            {messages.length > 0 ? (
+                                messages.map((msg) => {
+                                    const user = users.find(u => u.id === msg.idUser);
+                                    return (
+                                        <Message
+                                            key={msg.timestamp}
+                                            type={msg.idUser === userId ? 'reply' : 'received'}
+                                            content={msg.message}
+                                            timestamp={(msg.timestamp).toLocaleString()}
+                                            status={msg.status}
+                                            username={user ? (msg.idUser === userId ? 'you' : user.nome) : 'Usuário desconhecido'}
+                                        />
+                                    );
+                                })
+                            ) : (
+                                <div className='no-messages'>
+                                    <p></p>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className='foot-bar'>
@@ -160,11 +207,6 @@ const ChatBox = () => {
                         width="130"
                         color="var(--orange)"
                         ariaLabel="line-wave-loading"
-                        wrapperStyle={{}}
-                        wrapperClass=""
-                        firstLineColor=""
-                        middleLineColor=""
-                        lastLineColor=""
                     />
                 </div>
             )}

@@ -17,7 +17,7 @@
 
 .user-box .user-icon {
     margin: 0;
-    margin-right: 24px;
+    margin-left: 5px;
 }
 
 .user-info {
@@ -92,9 +92,8 @@
     color: var(--orange);
     background-color: var(--mediumgray);
     border-radius: 100%;
-    position: absolute;
     font-size: 24px;
-    transform: translate(160%, -60%);
+    transform: translate(-50%, -60%);
 }
 
 .users-options .users-options-list .user-box:hover {

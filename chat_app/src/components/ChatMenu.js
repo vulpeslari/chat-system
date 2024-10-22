@@ -1,47 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './styles/ChatMenu.css';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { BiSolidMessageAdd } from "react-icons/bi";
 import { IoSearch } from "react-icons/io5";
 import Chat from "./Chat";
-
-import usersData from './../pseudobd/users.json'; 
-import chatsData from './../pseudobd/chats.json'; 
+import { LineWave } from 'react-loader-spinner';
 
 const ChatMenu = () => {
-    const location = useLocation();
     const { userId } = useParams();
-    const [chats, setChats] = useState(chatsData); 
-    const [users, setUsers] = useState(usersData); 
-    const [searchTerm, setSearchTerm] = useState(""); 
+    const location = useLocation();
+    const [searchTerm, setSearchTerm] = useState("");
+    const [chats, setChats] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    {/* GET USERNAMES FROM IDS */}
-    const getUsernamesFromIds = (chatUserIds) => {
-        const usernames = chatUserIds.map(id => {
-            if (id === userId) {
-                return 'you'; 
-            }
-            const user = users.find(u => u.userId === id);
-            return user ? " @" + user.username : id;  
-        });
-    
-        // Verifica a quantidade de nomes e ajusta a última vírgula para "e"
-        if (usernames.length > 1) {
-            return `${usernames.slice(0, -1).join(',')} e ${usernames[usernames.length - 1]}`;
+    // Função para buscar usuários e conversas
+    const fetchUsersAndChats = async () => {
+        try {
+            const [usersResponse, chatsResponse] = await Promise.all([
+                fetch('https://api-itjc4yhhoq-uc.a.run.app/getAllUsers'),
+                fetch(`https://api-itjc4yhhoq-uc.a.run.app/getAllChats?idUser=${userId}`)
+            ]);
+
+            const usersData = await usersResponse.json();
+            const chatsData = await chatsResponse.json();
+
+            setUsers(usersData);
+            setChats(chatsData);
+        } catch (error) {
+            console.error('Erro ao buscar usuários e conversas:', error);
+        } finally {
+            setIsLoading(false);
         }
-        
-        return usernames[0]; // Retorna o único nome se houver só um usuário
     };
 
-    {/* FILTER CHATS */}
+    useEffect(() => {
+        fetchUsersAndChats();
+    }, [userId]);
+
+    // Função para mapear IDs para nomes de usuários
+    const getUserNamesFromIds = (idParticipants) => {
+        return idParticipants.map(name => {
+            const currentUser = users.find(u => u.id === userId);
+            if (currentUser.nome === name) return 'you';
+            const user = users.find(u => u.nome === name);
+            return user ? user.nome : "Usuário desconhecido";
+        });
+    };
+
+    // Função para formatar os nomes dos participantes de um grupo
+    const formatUsernames = (idParticipants) => {
+        const usernames = getUserNamesFromIds(idParticipants);
+
+        if (usernames.length === 2) return "";
+        const lastUser = usernames.pop();
+        return `${usernames.join(', @')} e @${lastUser}`;
+    };
+
+    // Função para obter o nome do chat (grupo ou privado)
+    const getGroupName = (chat) => {
+        const ids = chat.idParticipants.map(name => {
+            const user = users.find(u => u.nome === name);
+            return user ? user.id : null;
+        }).filter(Boolean);
+
+        if (ids.length === 2) {
+            const otherUserId = ids.find(id => id !== userId);
+            const otherUser = users.find(u => u.id === otherUserId);
+            return otherUser ? `@${otherUser.nome}` : "Usuário desconhecido";
+        }
+
+        return chat.nome || "Usuário desconhecido";
+    };
+
+    // Filtro de conversas baseado no termo de busca
     const filteredChats = chats.filter(chat => {
-        const usernames = getUsernamesFromIds(chat.chatUsers);
-        return usernames.toLowerCase().includes(searchTerm.toLowerCase());
+        const usernamesInChat = chat.idParticipants.map(name => {
+            const user = users.find(u => u.nome === name);
+            return user ? user.nome.toLowerCase() : '';
+        });
+        return usernamesInChat.some(nome => nome.includes(searchTerm.toLowerCase()));
     });
-
-    const handleSearchChange = (e) => {
-        setSearchTerm(e.target.value); 
-    };
 
     return (
         <div className='chatmenu'>
@@ -55,21 +94,32 @@ const ChatMenu = () => {
                 <label htmlFor='search'>
                     <IoSearch className='menu-icon search' />
                 </label>
-                <input 
-                    type='text' 
-                    id='search' 
-                    placeholder='Pesquisar conversas' 
+                <input
+                    type='text'
+                    id='search'
+                    placeholder='Pesquisar conversas por usuários'
                     value={searchTerm}
-                    onChange={handleSearchChange} 
+                    onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
             <div className='user-list'>
-                {/* MAP CHATS */}
-                {filteredChats.map(chat => (
-                    <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
-                        <Chat chatName={chat.chatName} chatUsers={getUsernamesFromIds(chat.chatUsers)} />
-                    </Link>
-                ))}
+                {isLoading ? (
+                    <div className='loading'>
+                        <LineWave
+                            visible={true}
+                            height="130"
+                            width="130"
+                            color="var(--orange)"
+                            ariaLabel="line-wave-loading"
+                        />
+                    </div>
+                ) : (
+                    filteredChats.map(chat => (
+                        <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
+                            <Chat chatName={getGroupName(chat)} chatUsers={formatUsernames(chat.idParticipants)} />
+                        </Link>
+                    ))
+                )}
             </div>
         </div>
     );

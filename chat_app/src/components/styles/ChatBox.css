@@ -36,7 +36,7 @@
 }
 
 .chat-content {
-    height: 500px;
+    height: 460px;
     display: flex;
     justify-content: center;
     margin-top: 25px;
@@ -91,7 +91,7 @@
     font-weight: 300;
     font-style: italic;
     text-align: center;
-    margin-bottom: 20px;
+    margin: 20px;
 }
 
 a {
