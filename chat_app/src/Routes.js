@@ -22,14 +22,14 @@ const Routes = () => {
                 </>} />
 
                 {/* CREATE USER */}
-                <Route path={`/:userId/chat/:chatId`} element={<>
+                <Route path={`/create-user`} element={<>
                     <div className="home-container">
                         <CreateUser />
                     </div>
                 </>} />
 
                 {/* CHAT */}
-                <Route path={`/:userId/chat/:create-user`} element={<>
+                <Route path={`/:userId/chat/:chatId`} element={<>
                     <div className="home-container">
                         <ChatMenu />
                         <ChatBox />

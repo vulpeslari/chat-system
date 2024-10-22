@@ -34,22 +34,22 @@ const CreateUser = () => {
                 <div className='text-bar'>
                     <h3>Nome de Usuário</h3>
                     <input type='text' className="nome" value={formData.nome}
-                    onChange={(a)=> setFormData({...formData, nome: a.target.value})}></input>
+                    onChange={(a)=> setFormData({...formData, nome: a.target.value})}/>
                 </div>
 
                 <div className='text-bar'>
                     <h3>Endereço de e-mail</h3>
                     <input type='text' className="email" value={formData.email}
-                    onChange={(a)=> setFormData({...formData, email: a.target.value})}></input>
+                    onChange={(a)=> setFormData({...formData, email: a.target.value})}/>
                 </div>
 
                 <div className='text-bar'>
                     <h3>Senha</h3>
                     <input type='text' className="pass" value={formData.senha}
-                    onChange={(a)=> setFormData({...formData, senha: a.target.value})}></input>
+                    onChange={(a)=> setFormData({...formData, senha: a.target.value})}/>
                 </div>
 
-                <input type='submit' className="submit">Cadastrar</input>
+                <input type="submit" className="submit" value={"Cadastrar"}/>
             </form>
         </div>
     )
