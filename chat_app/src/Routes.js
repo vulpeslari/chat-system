@@ -5,13 +5,18 @@ import RotBar from "./components/RotBar";
 import ChatMenu from "./components/ChatMenu";
 import ChatBox from "./components/ChatBox";
 import AddChat from "./components/AddChat";
-import AddUser from "./components/AddUser";
-import CreateUser from "./components/CreateUser";
 
 const Routes = () => {
     return (
         <BrowserRouter>
             <RouterRoutes>
+                {/* CREATE USER */}
+                <Route path={"/create-user"} element={<>
+                    <div className="home-container">
+                        <CreateUser />
+                    </div>
+                </>} />
+
                 {/* HOME */}
                 <Route path={`/:userId`} element={<>
                     <div className="home-container">
@@ -21,16 +26,10 @@ const Routes = () => {
                     </div>
                 </>} />
 
-                {/* CREATE USER */}
+                {/* CHAT */}
                 <Route path={`/:userId/chat/:chatId`} element={<>
                     <div className="home-container">
-                        <CreateUser />
-                    </div>
-                </>} />
-
-                {/* CHAT */}
-                <Route path={`/:userId/chat/:create-user`} element={<>
-                    <div className="home-container">
+                        <RotBar />
                         <ChatMenu />
                         <ChatBox />
                     </div>
@@ -56,20 +55,11 @@ const Routes = () => {
                     </div>
                 </>} />
 
-                {/* ADD USER */}
-                <Route path={`/:userId/add-user`} element={<>
-                    <div className="home-container">
-                        <AddUser />
-                        <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
-                </>} />
-
             </RouterRoutes>
         </BrowserRouter>
     );
 };
 
 export default Routes;
+
 
