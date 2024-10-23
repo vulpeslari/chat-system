@@ -5,7 +5,6 @@ import RotBar from "./components/RotBar";
 import ChatMenu from "./components/ChatMenu";
 import ChatBox from "./components/ChatBox";
 import AddChat from "./components/AddChat";
-import AddUser from "./components/AddUser";
 import CreateUser from "./components/CreateUser";
 
 const Routes = () => {
@@ -50,16 +49,6 @@ const Routes = () => {
                 <Route path={`/:userId/edit-chat/:chatId`} element={<>
                     <div className="home-container">
                         <AddChat />
-                        <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
-                </>} />
-
-                {/* ADD USER */}
-                <Route path={`/:userId/add-user`} element={<>
-                    <div className="home-container">
-                        <AddUser />
                         <RotBar />
                         <ChatMenu />
                         <ChatBox />

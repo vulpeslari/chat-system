@@ -18,7 +18,7 @@ const CreateUser = () => {
     
         // Criando o objeto body com os campos
         const body = {
-          idUser: user.user.uid,
+          idUser: user.user.uid, //problema aqui
           nome: name,
           email: email,
           senha: pass,
