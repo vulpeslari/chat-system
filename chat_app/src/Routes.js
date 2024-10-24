@@ -6,6 +6,7 @@ import ChatMenu from "./components/ChatMenu";
 import ChatBox from "./components/ChatBox";
 import AddChat from "./components/AddChat";
 import CreateUser from "./components/CreateUser";
+import Login from "./components/Login";
 
 const Routes = () => {
     return (
@@ -24,6 +25,13 @@ const Routes = () => {
                 <Route path={`/create-user`} element={<>
                     <div className="home-container">
                         <CreateUser />
+                    </div>
+                </>} />
+
+                {/* CREATE USER */}
+                <Route path={`/login`} element={<>
+                    <div className="home-container">
+                        <Login />
                     </div>
                 </>} />
 
