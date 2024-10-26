@@ -5,6 +5,8 @@ import { BiSolidMessageAdd } from "react-icons/bi";
 import { IoSearch } from "react-icons/io5";
 import Chat from "./Chat";
 import { LineWave } from 'react-loader-spinner';
+import { ref, set, onValue , update, get} from "firebase/database";
+import { database } from '../services/firebaseConfig';
 
 const ChatMenu = () => {
     const { userId } = useParams();
@@ -17,16 +19,65 @@ const ChatMenu = () => {
     // Função para buscar usuários e conversas
     const fetchUsersAndChats = async () => {
         try {
-            const [usersResponse, chatsResponse] = await Promise.all([
-                fetch('https://api-itjc4yhhoq-uc.a.run.app/getAllUsers'),
-                fetch(`https://api-itjc4yhhoq-uc.a.run.app/getAllChats?idUser=${userId}`)
-            ]);
+            const dataRefUser = ref(database, "/user/");
 
-            const usersData = await usersResponse.json();
-            const chatsData = await chatsResponse.json();
+            onValue(dataRefUser, (snapshot) => {
+            const usersData = snapshot.val();
+            if (usersData) {
+                const filteredData = Object.keys(usersData).map((id) => ({
+                id,
+                nome: usersData[id].nome,
+                }));
+                setUsers(filteredData);
+            } else {
+                console.log("Nenhum dado encontrado.");
+            }
+            });
 
-            setUsers(usersData);
-            setChats(chatsData);
+            const dataRefChat = ref(database, "/chats/"); // Referência à tabela de chats
+            onValue(dataRefChat, async (snapshot) => {
+                const chatsData = snapshot.val();
+                if (chatsData) {
+                    const chats = await Promise.all(Object.keys(chatsData).map(async (chatId) => {
+                        const chat = chatsData[chatId];
+                        
+                        // Verifica se o userId está na lista de idUsers do chat
+                        if (chat.idUsers.includes(userId)) {
+                            // Buscar nomes dos usuários em idUsers
+                            const participantNames = await Promise.all(chat.idUsers.map(async (participantId) => {
+                                const userRef = ref(database, `/user/${participantId}`);
+                                const userSnapshot = await get(userRef);
+                                const userData = userSnapshot.val();
+                                return userData ? userData.nome : 'Usuário desconhecido';
+                            }));
+
+                            // Determina o nome do chat
+                            const chatName = chat.nomeGrupo
+                            ? chat.nomeGrupo
+                            : participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
+                        
+
+                            // Estrutura do objeto de retorno
+                            return {
+                                id: chatId,
+                                nome: chatName,
+                                idParticipants: participantNames // Nomes dos participantes
+                            };
+                        }
+                        return null; // Retorna null se o userId não estiver no chat
+                    }));
+
+                    // Filtrar chats nulos (ou seja, chats que não têm o userId)
+                    const filteredData = chats.filter(chat => chat != null);
+
+                    setChats(filteredData);
+                } else {
+                    console.log("Nenhum dado encontrado.");
+                }
+            });
+
+
+            
         } catch (error) {
             console.error('Erro ao buscar usuários e conversas:', error);
         } finally {
@@ -41,9 +92,13 @@ const ChatMenu = () => {
     // Função para mapear IDs para nomes de usuários
     const getUserNamesFromIds = (idParticipants) => {
         return idParticipants.map(name => {
-            const currentUser = users.find(u => u.id === userId);
-            if (currentUser.nome === name) return 'you';
-            const user = users.find(u => u.nome === name);
+           // Converta `users` para um array, se necessário
+            const usersArray = Array.isArray(users) ? users : Object.values(users);
+            // Encontre o usuário atual
+            const currentUser = usersArray.find(u => u.id === userId);
+            if (currentUser && currentUser.nome === name) return 'you';
+
+            const user = usersArray.find(u => u.nome === name);
             return user ? user.nome : "Usuário desconhecido";
         });
     };
@@ -63,6 +118,7 @@ const ChatMenu = () => {
             const user = users.find(u => u.nome === name);
             return user ? user.id : null;
         }).filter(Boolean);
+
 
         if (ids.length === 2) {
             const otherUserId = ids.find(id => id !== userId);

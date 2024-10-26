@@ -1,0 +1,35 @@
+[
+  {
+    "id": "cha1",
+    "chatName": "Grupo 01",
+    "chatUsers": [
+      "icsja9iohduewoqisj",
+      "id2"
+    ]
+  },
+  {
+    "id": "chat2",
+    "chatName": "Grupo 02",
+    "chatUsers": [
+      "icsja9iohduewoqisj",
+      "id3"
+    ]
+  },
+  {
+    "id": "chat3",
+    "chatName": "Grupo 03",
+    "chatUsers": [
+      "icsja9iohduewoqisj",
+      "id2",
+      "id3"
+    ]
+  },
+  {
+    "id": "mrs33hvlj",
+    "chatName": "nhgfdes",
+    "chatUsers": [
+      "icsja9iohduewoqisj",
+      "id3"
+    ]
+  }
+]

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useCreateUserWithEmailAndPassword } from "react-firebase-hooks/auth";
 import { Link } from "react-router-dom";
 import { auth } from "../services/firebaseConfig";
+import { ref, update } from "firebase/database";
+import { database } from '../services/firebaseConfig';
 import "./styles/CreateUser.css"
 
 const CreateUser = () => {
@@ -18,21 +20,27 @@ const CreateUser = () => {
     
         // Criando o objeto body com os campos
         const body = {
-          idUser: user.user.uid, //problema aqui
-          nome: name,
-          email: email,
-          senha: pass,
-        };
+            [`user/${user.user.uid}`]: { // usando idUser como chave do nó
+              nome: name,
+              email: email,
+              senha: pass,
+            }
+          };
+        const rootRef = ref(database);
+
+        // Usa o método update para criar ou atualizar o documento
+        await update(rootRef, body);
+        // console.log("Dados do formulário:", body);
     
-        console.log("Dados do formulário:", body);
-    
-        // Aqui você pode usar o objeto body para enviar a uma API, salvar no banco de dados, etc.
-        // Exemplo: enviar o body via fetch:
-        await fetch("http://127.0.0.1:5001/chat-cipher/us-central1/api/createUser", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+        // // Aqui você pode usar o objeto body para enviar a uma API, salvar no banco de dados, etc.
+        // // Exemplo: enviar o body via fetch:
+        // await fetch("http://127.0.0.1:5001/chat-cipher/us-central1/api/createUser", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(body),
+        // });
+
+
     };
 
     useEffect(() => {

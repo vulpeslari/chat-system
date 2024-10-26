@@ -1,0 +1,92 @@
+.chatmenu { 
+    background-color: var(--darkgray);
+    height: 659px;
+    width: 500px;
+    border-right: 4px solid var(--gray);
+    padding: 35px;
+}
+
+.top-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+h1 {
+    color: var(--white);
+}
+
+.menu-icon {
+    color: var(--white);
+    height: 24px;
+    width: 24px;
+}
+
+.top-bar a {
+    margin: auto;
+    margin-right: 0;
+    padding: 10px;
+    border-radius: 100%;
+}
+
+.menu-icon :hover,
+.menu-icon.active {
+    color: var(--orange);
+    background-color: var(--lightgray);
+    cursor: pointer;
+}
+
+.search-bar {
+    background-color: var(--gray);
+    display: flex;
+    align-items: center;
+    border-radius: 50px;
+    height: 10px;
+    padding: 18px;
+    margin-top: 25px;
+}
+
+.search { 
+    width: 18px;
+    margin-right: 15px;
+    margin-top: 3px;
+}
+
+input {
+    background-color: transparent;
+    border: 0;
+    color: var(--white);
+    outline: none;
+}
+
+input[type="text"] {
+    width: 87%;
+}
+
+.search-bar input[type="text"] {
+    width: 93%;
+}
+
+.user-list {
+    padding-top: 25px;
+    margin-top: 25px;
+    border-top: 3px solid var(--gray);
+    overflow-y: scroll;
+    height: 500px;
+}
+
+.user-list::-webkit-scrollbar {
+    width: 10px; 
+}
+
+.user-list::-webkit-scrollbar-track {
+    background: var(--gray); 
+}
+
+.user-list::-webkit-scrollbar-thumb {
+    background: var(--lightgray); 
+}
+
+.user-list::-webkit-scrollbar-thumb:hover {
+    background: var(--orange); 
+}

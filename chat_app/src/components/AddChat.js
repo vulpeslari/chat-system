@@ -6,6 +6,8 @@ import { FaPen } from "react-icons/fa";
 import { IoIosAdd } from "react-icons/io";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
+import { ref, set, onValue , update} from "firebase/database";
+import { database } from '../services/firebaseConfig';
 
 const AddChat = () => {
     const { userId, chatId } = useParams();
@@ -24,9 +26,21 @@ const AddChat = () => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/getAllUsers');
-                const data = await response.json();
-                setUsers(data);
+                const dataRef = ref(database, "/user/");
+                onValue(dataRef, (snapshot) => {
+                const usersData = snapshot.val();
+                if (usersData) {
+                    const filteredData = Object.keys(usersData).map((id) => ({
+                    id,
+                    nome: usersData[id].nome,
+                    }));
+                    setUsers(filteredData);
+                    console.log(filteredData); // log atualizado
+                } else {
+                    console.log("Nenhum dado encontrado.");
+                }
+                })
+                
             } catch (error) {
                 console.error('Erro ao buscar usuários:', error);
             } finally {
@@ -49,30 +63,28 @@ const AddChat = () => {
     };
 
     const handleSubmit = async () => {
-        const url = chatId 
-            ? 'https://api-itjc4yhhoq-uc.a.run.app/updateChat' // DEPOIS TEM QUE ADAPTAR QUANDO TIVER A ROTA COMPLETA
-            : isGroupChat
-                ? 'https://api-itjc4yhhoq-uc.a.run.app/createChatGroup'
-                : 'https://api-itjc4yhhoq-uc.a.run.app/createChat';
-        
         if (isGroupChat && nomeGrupo.trim() === '') {
             alert('Por favor, preencha o nome do grupo.');
             return;
         }
-
+    
+        // Define o caminho do chat no Firebase
+        const chatRef = ref(database, `chats/${chatId ? chatId : new Date().getTime()}`); // Usar o timestamp para novo chat
         const payload = isGroupChat
             ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
             : { idUsers: [userId, selectedUsers[0]] };
-
+    
         try {
-            const response = await fetch(url, {
-                method: chatId ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            console.log(chatId ? 'Chat atualizado:' : isGroupChat ? 'Chat em grupo criado:' : 'Chat individual criado:', data);
-            navigate(`/${userId}`);
+            // Se chatId existir, atualiza o chat; caso contrário, cria um novo
+            if (chatId) {
+                await update(chatRef, payload);
+                console.log('Chat atualizado:', payload);
+            } else {
+                await set(chatRef, payload);
+                console.log('Chat criado:', payload);
+            }
+    
+            navigate(`/${userId}`); // Navegar após a operação
         } catch (error) {
             console.error('Erro ao criar/atualizar chat:', error);
         }
