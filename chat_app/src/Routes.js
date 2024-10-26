@@ -29,7 +29,7 @@ const Routes = () => {
                 </>} />
 
                 {/* CREATE USER */}
-                <Route path={`/login`} element={<>
+                <Route path={`/`} element={<>
                     <div className="home-container">
                         <Login />
                     </div>
@@ -38,6 +38,7 @@ const Routes = () => {
                 {/* CHAT */}
                 <Route path={`/:userId/chat/:chatId`} element={<>
                     <div className="home-container">
+                    <RotBar />
                         <ChatMenu />
                         <ChatBox />
                     </div>

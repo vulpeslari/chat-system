@@ -8,13 +8,9 @@ import { LineWave } from 'react-loader-spinner';
 import{ getDatabase} from 'firebase/database'
 import { initializeApp } from 'firebase/app';
 import { ref, set, onValue , update, get, push} from "firebase/database";
-import { database } from "C:/Users/pluto/Downloads/my-app/src/services/firebaseConfig.js";
-
-
-
+import { database } from "../services/firebaseConfig";
 
 // Inicializar o Realtime Database
-
 
 const ChatBox = () => {
     const [message, setMessage] = useState("");

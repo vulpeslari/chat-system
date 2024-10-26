@@ -3,7 +3,7 @@ import { useState} from 'react';
 import { useSignInWithEmailAndPassword } from "react-firebase-hooks/auth";
 import { auth } from "../services/firebaseConfig";
 import { useNavigate } from "react-router-dom";
-import "./styles/Login.css"
+import "./styles/LoginAndRegister.css"
 
 const Login = () => {
 
