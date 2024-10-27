@@ -20,7 +20,7 @@ const Login = () => {
     }
 
     if (user) {
-        navigate("/:userId");
+        navigate(`/${user.user.uid}`);
     }
 
 

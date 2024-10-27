@@ -9,8 +9,11 @@ import{ getDatabase} from 'firebase/database'
 import { initializeApp } from 'firebase/app';
 import { ref, set, onValue , update, get, push} from "firebase/database";
 import { database } from "../services/firebaseConfig";
+import { decryptAES, encryptAES } from '../services/cryptograph';
+import { enc } from 'crypto-js';
 
 // Inicializar o Realtime Database
+
 
 const ChatBox = () => {
     const [message, setMessage] = useState("");
@@ -21,8 +24,10 @@ const ChatBox = () => {
     const { userId, chatId } = useParams();
     const replyBarRef = useRef(null);
     const chatContentRef = useRef(null);
-
+    
+  
     useEffect(() => {
+        
         const fetchUsers = async () => {
             try {
                 const dataRef = ref(database, "/user/");
@@ -40,13 +45,14 @@ const ChatBox = () => {
                 console.error('Erro ao buscar usuários:', error);
             }
         };
-
         const fetchChatAndMessages = async () => {
             if (!chatId) return;
-
+            
             try {
+               
                 const dataRefChat = ref(database, `/chats/${chatId}`);
                 onValue(dataRefChat, async (snapshot) => {
+                   
                     const chatData = snapshot.val();
                     if (chatData) {
                         const participantNames = await Promise.all(
@@ -56,6 +62,7 @@ const ChatBox = () => {
                                 return userSnapshot.exists() ? userSnapshot.val().nome : 'Usuário desconhecido';
                             })
                         );
+                        
                         const chatName = chatData.nomeGrupo || participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
                         setCurrentChat({
                             id: chatId,
@@ -67,16 +74,23 @@ const ChatBox = () => {
                 });
 
                 const messagesRef = ref(database, `/chats/${chatId}/messages/`);
+                const keyAES = await fetchDescrypted()
                 onValue(messagesRef, (snapshot) => {
+                    
                     const messagesData = snapshot.val();
                     if (messagesData) {
                         const messagesArray = Object.keys(messagesData).map(key => ({
                             idUser: messagesData[key].idUser,
-                            message: messagesData[key].message,
+                            message: decryptAES(messagesData[key].message, keyAES),
                             timestamp: messagesData[key].timestamp
                         }));
+                        console.log(messagesArray)
                         setMessages(messagesArray);
                     }
+                    else{
+                        setMessages([])
+                    }
+                    setIsLoading(false);  // Marcar como carregado após carregar os dados
                 });
             } catch (error) {
                 console.error('Erro ao buscar chats ou mensagens:', error);
@@ -85,13 +99,13 @@ const ChatBox = () => {
 
         fetchUsers();
         fetchChatAndMessages();
+        
     }, [chatId, userId]);
-
+    
+    console.log(messages.length)
     // GET USERNAMES FROM IDS
     const getUsernamesFromIds = (chatUserIds) => {
-        console.log(users)
         const currentUser = users.find(u => u.id === userId);
-        console.log(currentUser)
         const usernames = chatUserIds.map(name => (name === currentUser.nome ? 'you' : `@${name}`));
 
         if (usernames.length > 1) {
@@ -114,31 +128,12 @@ const ChatBox = () => {
         }
     };
 
-    const checkForDuplicateMessage = async (newMessage) => {
-        const messagesRef = ref(database, `/chat/${newMessage.idChat}/messages/`);
-        const snapshot = await get(messagesRef);
-        
-        const existingMessages = snapshot.val() || {}; // Captura como objeto
-
-        // Converte o objeto em array
-        const messagesArray = Object.values(existingMessages);
-        
-        // Verificar se a mensagem já existe
-        const isDuplicate = messagesArray.some(msg => 
-            msg.message === newMessage.message && 
-            msg.idUser === newMessage.idUser &&
-            msg.timestamp === newMessage.timestamp // ou outra lógica para determinar duplicação
-        );
     
-        return isDuplicate;
-    };
-
     const sendMessageToAPI = async (newMessage) => {
-        
-
-    
         const messagesRef = ref(database, `/chats/${newMessage.idChat}/messages/`);
-    
+       
+        newMessage.message = encryptAES(newMessage.message, await fetchDescrypted());
+        console.log(decryptAES(newMessage.message, await fetchDescrypted()))
         try {
             await push(messagesRef, newMessage);
             console.log('Mensagem enviada com sucesso');
@@ -173,9 +168,7 @@ const ChatBox = () => {
     const renderChatHeader = () => {
         if (!currentChat) return null;
         const usersArray = Array.isArray(users) ? users : Object.values(users);
-       
         const currentUser = usersArray.find(user => user.id === userId);
-        console.log(currentChat.idParticipants)
         const otherUserName = currentChat.idParticipants.find(name => {
             const user = users.find(u => u.nome === name);
             return user && user.nome !== currentUser?.nome;
@@ -189,6 +182,38 @@ const ChatBox = () => {
         );
     };
 
+    const fetchDescrypted = async () =>{
+        const chatRef = ref(database, `/chats/${chatId}/keys/${userId}`);
+        try {
+            const snapshot = await get(chatRef);
+            
+            if (snapshot.exists()) {
+                const userKey = snapshot.val(); // Isso obterá o valor diretamente, como "n7DJL"
+                const response = await fetch('http://127.0.0.1:5001/chat-cipher/us-central1/api/descryptedKeyChat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ keyId: userId, ciphertext: userKey}), // Passando o ID do usuário
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao obter a chave AES');
+                }
+        
+                const data = await response.json();
+                return data.plaintext;
+            } else {
+                console.log("Nenhuma chave encontrada para o usuário especificado.");
+                return null;
+            }
+        } catch (error) {
+            console.error("Erro ao buscar chave do usuário:", error);
+            return null;
+        }
+
+    }
+
     return (
         <div className='chatbox'>
             {!chatId ? (
@@ -196,7 +221,7 @@ const ChatBox = () => {
                     <h2>Nenhuma conversa aberta.</h2>
                     <p>Selecione uma conversa ao lado ou crie uma nova para começar a conversar.</p>
                 </div>
-            ) : currentChat && messages.length > 0 && message !== null ? ( // Condição extra para garantir que não sejam nulos ou vazios
+            ) : currentChat && messages.length >= 0 && message !== null ? ( // Condição extra para garantir que não sejam nulos ou vazios
                 <div className='with-messages'>
                     <div className='top-bar'>
                         <div className='chat-info'>
@@ -214,19 +239,25 @@ const ChatBox = () => {
                     </div>
                     <div className='chat-content' ref={chatContentRef}>
                         <div className='messages'>
-                            {messages.map((msg) => {
-                                const user = users.find(u => u.id === msg.idUser);
-                                return (
-                                    <Message
-                                        key={msg.timestamp}
-                                        type={msg.idUser === userId ? 'reply' : 'received'}
-                                        content={msg.message}
-                                        timestamp={(msg.timestamp).toLocaleString()}
-                                        status={msg.status}
-                                        username={user ? (msg.idUser === userId ? 'you' : user.nome) : 'Usuário desconhecido'}
-                                    />
-                                );
-                            })}
+                        {messages.length > 0 ? (
+                                messages.map((msg) => {
+                                    const user = users.find(u => u.id === msg.idUser);
+                                    return (
+                                        <Message
+                                            key={msg.timestamp}
+                                            type={msg.idUser === userId ? 'reply' : 'received'}
+                                            content={msg.message}
+                                            timestamp={(msg.timestamp).toLocaleString()}
+                                            status={msg.status}
+                                            username={user ? (msg.idUser === userId ? 'you' : user.nome) : 'Usuário desconhecido'}
+                                        />
+                                    );
+                                })
+                            ) : (
+                                <div className='no-messages'>
+                                    <p></p>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className='foot-bar'>

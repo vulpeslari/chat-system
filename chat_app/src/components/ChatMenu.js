@@ -33,7 +33,7 @@ const ChatMenu = () => {
                 console.log("Nenhum dado encontrado.");
             }
             });
-
+            console.log("oi")
             const dataRefChat = ref(database, "/chats/"); // Referência à tabela de chats
             onValue(dataRefChat, async (snapshot) => {
                 const chatsData = snapshot.val();
@@ -75,7 +75,7 @@ const ChatMenu = () => {
                     console.log("Nenhum dado encontrado.");
                 }
             });
-
+           
 
             
         } catch (error) {

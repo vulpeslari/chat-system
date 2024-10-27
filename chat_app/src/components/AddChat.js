@@ -6,7 +6,7 @@ import { FaPen } from "react-icons/fa";
 import { IoIosAdd } from "react-icons/io";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue , update} from "firebase/database";
+import { ref, set, onValue , update, push} from "firebase/database";
 import { database } from '../services/firebaseConfig';
 
 const AddChat = () => {
@@ -69,25 +69,52 @@ const AddChat = () => {
         }
     
         // Define o caminho do chat no Firebase
-        const chatRef = ref(database, `chats/${chatId ? chatId : new Date().getTime()}`); // Usar o timestamp para novo chat
+        const chatRef = ref(database, "chats/"); // Usar o timestamp para novo chat
         const payload = isGroupChat
-            ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
-            : { idUsers: [userId, selectedUsers[0]] };
-    
+        ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
+        : { idUsers: [userId, selectedUsers[0]] };
+
+        // Cria o campo "keys" no payload com as chaves de cada usuário
+        payload.keys = {};
+        console.log(payload.idUsers)
+        const keysChat = await fetchAESKey(payload.idUsers)
+        let i = 0
+        for (const id of payload.idUsers) {
+            payload.keys[id] = keysChat[i]; // Adiciona a chave ao payload
+            i++;
+        }
+
         try {
-            // Se chatId existir, atualiza o chat; caso contrário, cria um novo
             if (chatId) {
-                await update(chatRef, payload);
                 console.log('Chat atualizado:', payload);
             } else {
-                await set(chatRef, payload);
-                console.log('Chat criado:', payload);
+                // Cria o chat com o payload completo
+                const newChatRef = await push(chatRef, payload);
+                console.log('ID do novo chat:', newChatRef.key);
+
+                console.log('Chat criado com todas as chaves:', payload);
             }
-    
-            navigate(`/${userId}`); // Navegar após a operação
+
+            navigate(`/${userId}`);
         } catch (error) {
             console.error('Erro ao criar/atualizar chat:', error);
         }
+    };
+    const fetchAESKey = async (userId) => {
+        const response = await fetch('http://127.0.0.1:5001/chat-cipher/us-central1/api/createKeyChat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idUsers: userId }), // Passando o ID do usuário
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao obter a chave AES');
+        }
+
+        const data = await response.json();
+        return data.encryptedAESKey; // Aqui ajustamos para pegar a chave criptografada
     };
 
     return (
