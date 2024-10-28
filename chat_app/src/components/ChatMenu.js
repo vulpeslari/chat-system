@@ -5,7 +5,7 @@ import { BiSolidMessageAdd } from "react-icons/bi";
 import { IoSearch } from "react-icons/io5";
 import Chat from "./Chat";
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue , update, get} from "firebase/database";
+import { ref, set, onValue, update, get } from "firebase/database";
 import { database } from '../services/firebaseConfig';
 
 const ChatMenu = () => {
@@ -22,25 +22,25 @@ const ChatMenu = () => {
             const dataRefUser = ref(database, "/user/");
 
             onValue(dataRefUser, (snapshot) => {
-            const usersData = snapshot.val();
-            if (usersData) {
-                const filteredData = Object.keys(usersData).map((id) => ({
-                id,
-                nome: usersData[id].nome,
-                }));
-                setUsers(filteredData);
-            } else {
-                console.log("Nenhum dado encontrado.");
-            }
+                const usersData = snapshot.val();
+                if (usersData) {
+                    const filteredData = Object.keys(usersData).map((id) => ({
+                        id,
+                        nome: usersData[id].nome,
+                    }));
+                    setUsers(filteredData);
+                } else {
+                    console.log("Nenhum dado encontrado.");
+                }
             });
-            console.log("oi")
+            console.log(users)
             const dataRefChat = ref(database, "/chats/"); // Referência à tabela de chats
             onValue(dataRefChat, async (snapshot) => {
                 const chatsData = snapshot.val();
                 if (chatsData) {
                     const chats = await Promise.all(Object.keys(chatsData).map(async (chatId) => {
                         const chat = chatsData[chatId];
-                        
+
                         // Verifica se o userId está na lista de idUsers do chat
                         if (chat.idUsers.includes(userId)) {
                             // Buscar nomes dos usuários em idUsers
@@ -53,9 +53,9 @@ const ChatMenu = () => {
 
                             // Determina o nome do chat
                             const chatName = chat.nomeGrupo
-                            ? chat.nomeGrupo
-                            : participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
-                        
+                                ? chat.nomeGrupo
+                                : participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
+
 
                             // Estrutura do objeto de retorno
                             return {
@@ -75,9 +75,7 @@ const ChatMenu = () => {
                     console.log("Nenhum dado encontrado.");
                 }
             });
-           
 
-            
         } catch (error) {
             console.error('Erro ao buscar usuários e conversas:', error);
         } finally {
@@ -92,7 +90,7 @@ const ChatMenu = () => {
     // Função para mapear IDs para nomes de usuários
     const getUserNamesFromIds = (idParticipants) => {
         return idParticipants.map(name => {
-           // Converta `users` para um array, se necessário
+            // Converta `users` para um array, se necessário
             const usersArray = Array.isArray(users) ? users : Object.values(users);
             // Encontre o usuário atual
             const currentUser = usersArray.find(u => u.id === userId);

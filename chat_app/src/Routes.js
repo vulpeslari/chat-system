@@ -8,27 +8,32 @@ import AddChat from "./components/AddChat";
 import CreateUser from "./components/CreateUser";
 import Login from "./components/Login";
 
+import PrivateRoute from "./services/PrivateRoute"; // ROTAS PRIVADAS APENAS PODEM SER ACESSADAS ENQUANTO O TOKEN ESTIVER ATIVO
+import NotFound from "./components/NotFound";
+
 const Routes = () => {
     return (
         <BrowserRouter>
             <RouterRoutes>
                 {/* HOME */}
                 <Route path={`/:userId`} element={<>
-                    <div className="home-container">
-                        <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
+                    <PrivateRoute>
+                        <div className="home-container">
+                            <RotBar />
+                            <ChatMenu />
+                            <ChatBox />
+                        </div>
+                    </PrivateRoute>
                 </>} />
 
-                {/* CREATE USER */}
+                {/* REGISTER */}
                 <Route path={`/create-user`} element={<>
                     <div className="home-container">
                         <CreateUser />
                     </div>
                 </>} />
 
-                {/* CREATE USER */}
+                {/* LOGIN */}
                 <Route path={`/`} element={<>
                     <div className="home-container">
                         <Login />
@@ -37,32 +42,45 @@ const Routes = () => {
 
                 {/* CHAT */}
                 <Route path={`/:userId/chat/:chatId`} element={<>
-                    <div className="home-container">
-                    <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
+                    <PrivateRoute>
+                        <div className="home-container">
+                            <RotBar />
+                            <ChatMenu />
+                            <ChatBox />
+                        </div>
+                    </PrivateRoute>
                 </>} />
 
                 {/* ADD CHAT */}
                 <Route path={`/:userId/add-chat`} element={<>
-                    <div className="home-container">
-                        <AddChat />
-                        <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
+                    <PrivateRoute>
+                        <div className="home-container">
+                            <AddChat />
+                            <RotBar />
+                            <ChatMenu />
+                            <ChatBox />
+                        </div>
+                    </PrivateRoute>
                 </>} />
 
                 {/* EDIT CHAT */}
                 <Route path={`/:userId/edit-chat/:chatId`} element={<>
-                    <div className="home-container">
-                        <AddChat />
-                        <RotBar />
-                        <ChatMenu />
-                        <ChatBox />
-                    </div>
+                    <PrivateRoute>
+                        <div className="home-container">
+                            <AddChat />
+                            <RotBar />
+                            <ChatMenu />
+                            <ChatBox />
+                        </div>
+                    </PrivateRoute>
                 </>} />
+
+                {/* NOT FOUND */}
+                <Route path="/:userId/*" element={
+                    <PrivateRoute>
+                        <NotFound />
+                    </PrivateRoute>
+                } />
 
             </RouterRoutes>
         </BrowserRouter>

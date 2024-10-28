@@ -11,6 +11,7 @@ const CreateUser = () => {
     const [email, setEmail] = useState("");
     const [pass, setPass] = useState("");
     const [createUserWithEmailAndPassword, user, error] = useCreateUserWithEmailAndPassword(auth);
+    const [showPassword, setShowPassword] = useState(false); 
     const navigate = useNavigate(); // Instancia o hook useNavigate
 
     const handleRegister = async (e) => {
@@ -28,41 +29,41 @@ const CreateUser = () => {
                 },
             };
             const rootRef = ref(database);
-            
+
             update(rootRef, body)
                 .then(() => {
                     console.log("Usuário salvo com sucesso!");
                     navigate("/"); // Redireciona para a rota principal após salvar
                 })
                 .catch(error => console.error("Erro ao salvar o usuário:", error));
-            
-                const bodyKeyCreate = {
-                    idUser: user.user.uid,
-                }
-             // Função para criar a chave do usuário
-                const createUserKey = async () => {
-                    try {
-                        const response = await fetch('http://127.0.0.1:5001/chat-cipher/us-central1/api/createKeyUser', {
-                            method: 'POST', // Método POST
-                            headers: {
-                                'Content-Type': 'application/json', // Definindo o tipo de conteúdo
-                            },
-                            body: JSON.stringify(bodyKeyCreate), // Convertendo o corpo para JSON
-                        });
 
-                        if (!response.ok) {
-                            throw new Error('Erro ao criar a chave do usuário');
-                        }
+            const bodyKeyCreate = {
+                idUser: user.user.uid,
+            }
+            // Função para criar a chave do usuário
+            const createUserKey = async () => {
+                try {
+                    const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyUser', {
+                        method: 'POST', // Método POST
+                        headers: {
+                            'Content-Type': 'application/json', // Definindo o tipo de conteúdo
+                        },
+                        body: JSON.stringify(bodyKeyCreate), // Convertendo o corpo para JSON
+                    });
 
-                        const result = await response.json(); // Pega a resposta em JSON
-
-                        console.log("Chave do usuário criada com sucesso:", result);
-                        navigate("/"); // Redireciona para a rota principal após salvar
-                    } catch (error) {
-                        console.error("Erro ao criar a chave do usuário:", error);
+                    if (!response.ok) {
+                        throw new Error('Erro ao criar a chave do usuário');
                     }
-                };
-                createUserKey();
+
+                    const result = await response.json(); // Pega a resposta em JSON
+
+                    console.log("Chave do usuário criada com sucesso:", result);
+                    navigate("/"); // Redireciona para a rota principal após salvar
+                } catch (error) {
+                    console.error("Erro ao criar a chave do usuário:", error);
+                }
+            };
+            createUserKey();
         }
     }, [user, name, email, pass, navigate]);
 
@@ -85,7 +86,14 @@ const CreateUser = () => {
 
                 <div className='text-bar'>
                     <h3>Senha</h3>
-                    <input type='password' className="pass" onChange={(e) => setPass(e.target.value)} />
+                    <input type={showPassword ? 'text' : 'password'} onChange={(e) => setPass(e.target.value)} />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)} // Alterna o estado
+                        className="password"
+                    >
+                        {showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    </button>
                 </div>
 
                 <input type="submit" className="submit" value="Cadastrar" />

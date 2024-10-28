@@ -3,10 +3,9 @@ import './styles/AddUserAndChat.css';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
-import { IoIosAdd } from "react-icons/io";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue , update, push} from "firebase/database";
+import { ref, set, onValue, update, push, get } from "firebase/database"; // Adicione get para buscar dados
 import { database } from '../services/firebaseConfig';
 
 const AddChat = () => {
@@ -23,24 +22,23 @@ const AddChat = () => {
         setIsGroupChat(selectedUsers.length > 1);
     }, [selectedUsers]);
 
+    // Busca os usuários disponíveis
     useEffect(() => {
         const fetchUsers = async () => {
             try {
                 const dataRef = ref(database, "/user/");
                 onValue(dataRef, (snapshot) => {
-                const usersData = snapshot.val();
-                if (usersData) {
-                    const filteredData = Object.keys(usersData).map((id) => ({
-                    id,
-                    nome: usersData[id].nome,
-                    }));
-                    setUsers(filteredData);
-                    console.log(filteredData); // log atualizado
-                } else {
-                    console.log("Nenhum dado encontrado.");
-                }
+                    const usersData = snapshot.val();
+                    if (usersData) {
+                        const filteredData = Object.keys(usersData).map((id) => ({
+                            id,
+                            nome: usersData[id].nome,
+                        }));
+                        setUsers(filteredData);
+                    } else {
+                        console.log("Nenhum dado encontrado.");
+                    }
                 })
-                
             } catch (error) {
                 console.error('Erro ao buscar usuários:', error);
             } finally {
@@ -49,6 +47,24 @@ const AddChat = () => {
         };
         fetchUsers();
     }, []);
+
+    // Busca os dados do chat se chatId estiver presente
+    useEffect(() => {
+        const fetchChatData = async () => {
+            if (chatId) {
+                const chatRef = ref(database, `chats/${chatId}`);
+                const snapshot = await get(chatRef);
+                if (snapshot.exists()) {
+                    const chatData = snapshot.val();
+                    setNomeGrupo(chatData.nomeGrupo || '');
+                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId)); // Filtra o userId do dono do chat
+                } else {
+                    console.log("Chat não encontrado");
+                }
+            }
+        };
+        fetchChatData();
+    }, [chatId, userId]);
 
     const filteredUsers = users
         .filter(user => user.id !== userId)
@@ -67,46 +83,65 @@ const AddChat = () => {
             alert('Por favor, preencha o nome do grupo.');
             return;
         }
-    
-        // Define o caminho do chat no Firebase
-        const chatRef = ref(database, "chats/"); // Usar o timestamp para novo chat
-        const payload = isGroupChat
-        ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
-        : { idUsers: [userId, selectedUsers[0]] };
 
-        // Cria o campo "keys" no payload com as chaves de cada usuário
+        const chatRef = ref(database, "chats/");
+        const payload = isGroupChat
+            ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
+            : { idUsers: [userId, selectedUsers[0]] };
+
         payload.keys = {};
-        console.log(payload.idUsers)
-        const keysChat = await fetchAESKey(payload.idUsers)
-        let i = 0
+        const keysChat = await fetchAESKey(payload.idUsers);
+        let i = 0;
         for (const id of payload.idUsers) {
-            payload.keys[id] = keysChat[i]; // Adiciona a chave ao payload
+            payload.keys[id] = keysChat[i];
             i++;
         }
 
         try {
             if (chatId) {
+                await update(ref(database, `chats/${chatId}`), payload);
                 console.log('Chat atualizado:', payload);
             } else {
-                // Cria o chat com o payload completo
                 const newChatRef = await push(chatRef, payload);
                 console.log('ID do novo chat:', newChatRef.key);
-
-                console.log('Chat criado com todas as chaves:', payload);
             }
-
             navigate(`/${userId}`);
         } catch (error) {
             console.error('Erro ao criar/atualizar chat:', error);
         }
     };
+
+    // Função para excluir o chat
+    const handleDeleteChat = async () => {
+        if (!chatId) return;
+
+        try {
+            const response = await fetch(`https://api-itjc4yhhoq-uc.a.run.app/deleteChat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ chatId }), // Envia o chatId no corpo da requisição
+            });
+
+            if (response.ok) {
+                console.log('Chat excluído com sucesso');
+                navigate(`/${userId}`); // Redireciona para a rota do usuário após a exclusão
+            } else {
+                console.error('Erro ao excluir o chat:', await response.json());
+            }
+        } catch (error) {
+            console.error('Erro ao fazer requisição de exclusão:', error);
+        }
+    };
+
     const fetchAESKey = async (userId) => {
-        const response = await fetch('http://127.0.0.1:5001/chat-cipher/us-central1/api/createKeyChat', {
+        const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyChat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ idUsers: userId }), // Passando o ID do usuário
+            body: JSON.stringify({ idUsers: userId }),
         });
 
         if (!response.ok) {
@@ -114,7 +149,7 @@ const AddChat = () => {
         }
 
         const data = await response.json();
-        return data.encryptedAESKey; // Aqui ajustamos para pegar a chave criptografada
+        return data.encryptedAESKey;
     };
 
     return (
@@ -185,8 +220,13 @@ const AddChat = () => {
             </div>
             <div className='footer'>
                 <button className='button' onClick={handleSubmit}>
-                    {chatId ? 'Salvar alterações' : 'Criar chat'} <IoIosAdd className='button-icon' />
+                    {chatId ? 'Salvar alterações' : 'Criar chat '} 
                 </button>
+                {chatId && (
+                    <button className='button delete' onClick={handleDeleteChat}>
+                        Excluir Chat
+                    </button>
+                )}
             </div>
         </div>
     );
