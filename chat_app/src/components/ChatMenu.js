@@ -33,7 +33,7 @@ const ChatMenu = () => {
                     console.log("Nenhum dado encontrado.");
                 }
             });
-            console.log(users)
+
             const dataRefChat = ref(database, "/chats/"); // Referência à tabela de chats
             onValue(dataRefChat, async (snapshot) => {
                 const chatsData = snapshot.val();
@@ -56,12 +56,29 @@ const ChatMenu = () => {
                                 ? chat.nomeGrupo
                                 : participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
 
+                                const dataRefMessages = ref(database, `/chats/${chatId}/messages`);
+                                let mensagensSemUsuario = 0;
+                                onValue(dataRefMessages, (snapshot) => {
+                                    const messagesData = snapshot.val();
+                                    if (messagesData) {
+                                        Object.keys(messagesData).forEach((messageId) => {
+                                            const mensagem = messagesData[messageId];
 
+                                            // Verifica se o `userId` não está no array `ids`
+                                            if (!mensagem.idUserRead.includes(userId)) {
+                                                mensagensSemUsuario++;
+                                            }
+                                        });
+
+                                        console.log(`Quantidade de mensagens do chat ${chatId} sem o usuário ${userId}:`, mensagensSemUsuario);
+                                    }
+                                });
                             // Estrutura do objeto de retorno
                             return {
                                 id: chatId,
                                 nome: chatName,
-                                idParticipants: participantNames // Nomes dos participantes
+                                idParticipants: participantNames ,// Nomes dos participantes
+                                messagesNotRead: mensagensSemUsuario,
                             };
                         }
                         return null; // Retorna null se o userId não estiver no chat
@@ -170,7 +187,7 @@ const ChatMenu = () => {
                 ) : (
                     filteredChats.map(chat => (
                         <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
-                            <Chat chatName={getGroupName(chat)} chatUsers={formatUsernames(chat.idParticipants)} />
+                            <Chat chatName={getGroupName(chat)} chatUsers={formatUsernames(chat.idParticipants)} status={chat.messagesNotRead > 0 ? true : false} />
                         </Link>
                     ))
                 )}

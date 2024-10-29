@@ -13,7 +13,7 @@ const RotBar = () => {
   const handleLogout = () => {
     console.log("Logout acionado");
     localStorage.removeItem(userId); // Remove o token de autenticação
-    navigate('/'); 
+    navigate('/');
   };
 
   return (

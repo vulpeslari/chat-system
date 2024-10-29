@@ -3,7 +3,7 @@ import './styles/UserAndChat.css';
 import { IoPersonAdd } from "react-icons/io5";
 
 const UserOption = ({ userName, initialStatus, onChangeStatus }) => {
-    const [status, setStatus] = useState(initialStatus); 
+    const [status, setStatus] = useState(initialStatus);
 
     const handleAddUser = () => {
         setStatus(true);
@@ -19,7 +19,7 @@ const UserOption = ({ userName, initialStatus, onChangeStatus }) => {
                 <h2>{userName}</h2>
                 <h3>{status ? 'Adicionado.' : 'Não adicionado.'}</h3>
             </div>
-            {!status && ( 
+            {!status && (
                 <IoPersonAdd className='menu-icon add-user' onClick={handleAddUser} />
             )}
         </div>

@@ -10,7 +10,7 @@ import { initializeApp } from 'firebase/app';
 import { ref, set, onValue, update, get, push } from "firebase/database";
 import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
-import { enc } from 'crypto-js';
+
 
 import addNotification from 'react-push-notification';
 
@@ -32,7 +32,7 @@ const ChatBox = () => {
             title: 'title',
             message: 'message',
             duration: 4000,
-            native: true 
+            native: true
         });
     }
 
@@ -69,6 +69,7 @@ const ChatBox = () => {
 
             try {
                 const dataRefChat = ref(database, `/chats/${chatId}`);
+                const qtde = (await get(ref(database, `/chats/${chatId}`))).val()?.idUsers?.length || 0;
                 onValue(dataRefChat, async (snapshot) => {
                     const chatData = snapshot.val();
                     if (chatData) {
@@ -82,6 +83,7 @@ const ChatBox = () => {
 
                         const chatName = chatData.nomeGrupo || participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
 
+
                         setCurrentChat({
                             id: chatId,
                             nome: chatName,
@@ -93,24 +95,43 @@ const ChatBox = () => {
                 });
 
                 const messagesRef = ref(database, `/chats/${chatId}/messages/`);
-                const keyAES = await fetchDescrypted()
-                onValue(messagesRef, (snapshot) => {
 
+                const keyAES = await fetchDescrypted()
+
+                onValue(messagesRef, (snapshot) => {
                     const messagesData = snapshot.val();
+
                     if (messagesData) {
-                        const messagesArray = Object.keys(messagesData).map(key => ({
-                            idUser: messagesData[key].idUser,
-                            message: decryptAES(messagesData[key].message, keyAES),
-                            timestamp: messagesData[key].timestamp
-                        }));
-                        console.log(messagesArray)
+                        const messagesArray = Object.keys(messagesData).map(key => {
+                            const message = messagesData[key];
+                            const { idUser, idUserRead = [] } = message;
+
+                            // Verifique se `message.message` está definido antes de continuar
+                            if (message.message === undefined) {
+                                console.warn(`Mensagem ausente para a chave: ${key}`);
+                                return null; // Ignora esta mensagem caso esteja indefinida
+                            }
+
+                            // Define o status da mensagem
+                            const status = idUserRead.length === qtde ? "seen" : "noseen";
+
+                            return {
+                                id: key,
+                                idUser,
+                                message: decryptAES(message.message, keyAES),
+                                timestamp: message.timestamp,
+                                status: status,
+                            };
+                        }).filter(Boolean); // Remove valores nulos
+
                         setMessages(messagesArray);
+                    } else {
+                        setMessages([]);
                     }
-                    else {
-                        setMessages([])
-                    }
-                    setIsLoading(false);  // Marcar como carregado após carregar os dados
+
+                    setIsLoading(false); // Marcar como carregado após carregar os dados
                 });
+
             } catch (error) {
                 console.error('Erro ao buscar chats ou mensagens:', error);
             }
@@ -121,8 +142,23 @@ const ChatBox = () => {
 
     }, [chatId, userId]);
 
-    console.log(messages.length)
+
     // GET USERNAMES FROM IDS
+     // Função manual para adicionar o userId ao array idUserRead
+     const markMessageAsRead = async (messageId) => {
+        const messageRef = ref(database, `/chats/${chatId}/messages/${messageId}`);
+
+        // Obtém o snapshot atual da mensagem e atualiza manualmente
+        onValue(messageRef, (snapshot) => {
+            const messageData = snapshot.val();
+            const idUserRead = messageData?.idUserRead || [];
+
+            if (!idUserRead.includes(userId)) {
+                update(messageRef, { idUserRead: [...idUserRead, userId] });
+            }
+        }, { onlyOnce: true }); // Faz a leitura uma vez para evitar loops
+    };
+
     const getUsernamesFromIds = (chatUserIds) => {
         const currentUser = users.find(u => u.id === userId);
         const usernames = chatUserIds.map(name => (name === currentUser.nome ? 'you' : `@${name}`));
@@ -149,9 +185,7 @@ const ChatBox = () => {
 
     const sendMessageToAPI = async (newMessage) => {
         const messagesRef = ref(database, `/chats/${newMessage.idChat}/messages/`);
-
         newMessage.message = encryptAES(newMessage.message, await fetchDescrypted());
-        console.log(decryptAES(newMessage.message, await fetchDescrypted()))
         try {
             await push(messagesRef, newMessage);
             console.log('Mensagem enviada com sucesso');
@@ -167,15 +201,20 @@ const ChatBox = () => {
                 idUser: userId,
                 message,
                 timestamp: new Date().toISOString(),
+                idUserRead : [userId],
             };
 
-            // Envia a mensagem ao Firebase sem atualizar o estado `messages` localmente
-            await sendMessageToAPI(newMessage);
-            setMessage("");  // Limpa a área de entrada
-            sendNotification();
+            // Verifique se todos os campos estão preenchidos corretamente
+            if (newMessage.idChat && newMessage.idUser && newMessage.message && newMessage.timestamp) {
+                await sendMessageToAPI(newMessage);
+                setMessage("");  // Limpa a área de entrada
+                sendNotification();
+            } else {
+                console.warn("Alguns campos estão indefinidos:", newMessage);
+            }
         }
 
-        
+
     };
 
 
@@ -271,6 +310,7 @@ const ChatBox = () => {
                         <div className='messages'>
                             {messages.length > 0 ? (
                                 messages.map((msg) => {
+                                    markMessageAsRead(msg.id)
                                     const user = users.find(u => u.id === msg.idUser);
                                     return (
                                         <Message

@@ -11,7 +11,7 @@ const CreateUser = () => {
     const [email, setEmail] = useState("");
     const [pass, setPass] = useState("");
     const [createUserWithEmailAndPassword, user, error] = useCreateUserWithEmailAndPassword(auth);
-    const [showPassword, setShowPassword] = useState(false); 
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate(); // Instancia o hook useNavigate
 
     const handleRegister = async (e) => {
@@ -26,6 +26,7 @@ const CreateUser = () => {
                     nome: name,
                     email: email,
                     senha: pass,
+                    status: "online",
                 },
             };
             const rootRef = ref(database);
@@ -37,33 +38,33 @@ const CreateUser = () => {
                 })
                 .catch(error => console.error("Erro ao salvar o usuário:", error));
 
-            const bodyKeyCreate = {
-                idUser: user.user.uid,
-            }
-            // Função para criar a chave do usuário
-            const createUserKey = async () => {
-                try {
-                    const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyUser', {
-                        method: 'POST', // Método POST
-                        headers: {
-                            'Content-Type': 'application/json', // Definindo o tipo de conteúdo
-                        },
-                        body: JSON.stringify(bodyKeyCreate), // Convertendo o corpo para JSON
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Erro ao criar a chave do usuário');
-                    }
-
-                    const result = await response.json(); // Pega a resposta em JSON
-
-                    console.log("Chave do usuário criada com sucesso:", result);
-                    navigate("/"); // Redireciona para a rota principal após salvar
-                } catch (error) {
-                    console.error("Erro ao criar a chave do usuário:", error);
+                const bodyKeyCreate = {
+                    idUser: user.user.uid,
                 }
-            };
-            createUserKey();
+             // Função para criar a chave do usuário
+                const createUserKey = async () => {
+                    try {
+                        const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyUser', {
+                            method: 'POST', // Método POST
+                            headers: {
+                                'Content-Type': 'application/json', // Definindo o tipo de conteúdo
+                            },
+                            body: JSON.stringify(bodyKeyCreate), // Convertendo o corpo para JSON
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Erro ao criar a chave do usuário');
+                        }
+
+                        const result = await response.json(); // Pega a resposta em JSON
+
+                        console.log("Chave do usuário criada com sucesso:", result);
+                        navigate("/"); // Redireciona para a rota principal após salvar
+                    } catch (error) {
+                        console.error("Erro ao criar a chave do usuário:", error);
+                    }
+                };
+                createUserKey();
         }
     }, [user, name, email, pass, navigate]);
 

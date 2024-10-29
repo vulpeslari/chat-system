@@ -5,7 +5,7 @@ import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue, update, push, get } from "firebase/database"; // Adicione get para buscar dados
+import { ref, set, onValue, update, push, get, remove} from "firebase/database"; // Adicione get para buscar dados
 import { database } from '../services/firebaseConfig';
 
 const AddChat = () => {
@@ -90,6 +90,7 @@ const AddChat = () => {
             : { idUsers: [userId, selectedUsers[0]] };
 
         payload.keys = {};
+        payload.timestamp = {};
         const keysChat = await fetchAESKey(payload.idUsers);
         let i = 0;
         for (const id of payload.idUsers) {
@@ -99,7 +100,8 @@ const AddChat = () => {
 
         try {
             if (chatId) {
-                await update(ref(database, `chats/${chatId}`), payload);
+                // await update(ref(database, `chats/${chatId}`), payload);
+                // await remove(ref(database, `chats/${chatId}/messages`))
                 console.log('Chat atualizado:', payload);
             } else {
                 const newChatRef = await push(chatRef, payload);
@@ -116,20 +118,10 @@ const AddChat = () => {
         if (!chatId) return;
 
         try {
-            const response = await fetch(`https://api-itjc4yhhoq-uc.a.run.app/deleteChat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ chatId }), // Envia o chatId no corpo da requisição
-            });
+            await remove(ref(database, `chats/${chatId}/`))
+            console.log('Chat excluído com sucesso');
+            navigate(`/${userId}`); // Redireciona para a rota do usuário após a exclusão
 
-            if (response.ok) {
-                console.log('Chat excluído com sucesso');
-                navigate(`/${userId}`); // Redireciona para a rota do usuário após a exclusão
-            } else {
-                console.error('Erro ao excluir o chat:', await response.json());
-            }
         } catch (error) {
             console.error('Erro ao fazer requisição de exclusão:', error);
         }
@@ -220,7 +212,7 @@ const AddChat = () => {
             </div>
             <div className='footer'>
                 <button className='button' onClick={handleSubmit}>
-                    {chatId ? 'Salvar alterações' : 'Criar chat '} 
+                    {chatId ? 'Salvar alterações' : 'Criar chat '}
                 </button>
                 {chatId && (
                     <button className='button delete' onClick={handleDeleteChat}>
