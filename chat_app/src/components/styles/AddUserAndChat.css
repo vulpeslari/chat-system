@@ -121,14 +121,20 @@
 .footer {
     display: flex;
     justify-content: center;
+    align-items: center;
     margin-top: 20px;
-    justify-content: space-between;
-    transform: translateX(50%);
-    width: 48%;
+    justify-content: space-evenly;
+    width: 100%;
 }
 
-.footer button:nth-last-child(1) {
+.footer button:first-child {
+    background-color: var(--orange);
+    margin-left: 150px;
+}
+
+.footer button:last-child {
     background-color: rgba(255, 255, 255, .15);
+    margin-right: 150px;
 }
 
 .users-select-list {
@@ -164,3 +170,4 @@
 .users-options-list::-webkit-scrollbar-thumb:hover {
     background: var(--orange); 
 }
+

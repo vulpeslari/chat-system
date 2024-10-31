@@ -4,6 +4,7 @@ import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 
 import { RiMessageFill } from "react-icons/ri";
 import { BiSolidExit } from "react-icons/bi";
+import { FaUserCircle } from "react-icons/fa";
 
 const RotBar = () => {
   const { userId } = useParams();
@@ -19,7 +20,7 @@ const RotBar = () => {
   return (
     <div className="rotbar">
       <Link to={`/${userId}/user`}>
-        <img className="user-icon" src="/img/user-icon.jpg" alt="User" />
+        <FaUserCircle className={`bar-icon user ${location.pathname === `/${userId}/user` ? 'active' : ''}`} />
       </Link>
       <Link to={`/${userId}`}>
         <RiMessageFill className={`bar-icon ${location.pathname === `/${userId}` ? 'active' : ''}`} />

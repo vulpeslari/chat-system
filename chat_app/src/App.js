@@ -10,7 +10,7 @@ function App() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        console.log("A aba está fora de foco ou foi fechada.");
+        //console.log("A aba está fora de foco ou foi fechada.");
 
         const status = { status: "offline" };
         if (userUid) {
@@ -24,10 +24,10 @@ function App() {
         if (userUid) {
           const userRf = ref(database, `/user/${userUid}`);
           update(userRf, status)
-            .then(() => console.log(`O usuário ${userUid} está deslogado`))
+            .then(() => console.log(`O usuário ${userUid} está logado`))
             .catch(error => console.error("Erro ao atualizar status:", error));
         }
-        console.log("A aba está ativa.");
+        //console.log("A aba está ativa.");
       }
     };
 

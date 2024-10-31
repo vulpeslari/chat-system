@@ -17,12 +17,18 @@
     align-items: left;
 }
 
-.text-bar input[type='text'], .text-bar input[type='password'] {
+.text-bar input[type='email'], .text-bar input[type='text'] , .text-bar input[type='password'] {
     background-color: var(--gray);
     border: none;
     width: 95%;
     height: 20px;
     padding: 10px;
+}
+
+.required::after {
+    content: "*";
+    color: var(--orange);
+    margin-left: 6px; 
 }
 
 .text-bar h3 {

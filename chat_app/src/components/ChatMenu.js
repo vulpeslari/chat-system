@@ -70,7 +70,7 @@ const ChatMenu = () => {
                                             }
                                         });
 
-                                        console.log(`Quantidade de mensagens do chat ${chatId} sem o usuário ${userId}:`, mensagensSemUsuario);
+                                        //console.log(`Quantidade de mensagens do chat ${chatId} sem o usuário ${userId}:`, mensagensSemUsuario);
                                     }
                                 });
                             // Estrutura do objeto de retorno
@@ -187,7 +187,10 @@ const ChatMenu = () => {
                 ) : (
                     filteredChats.map(chat => (
                         <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
-                            <Chat chatName={getGroupName(chat)} chatUsers={formatUsernames(chat.idParticipants)} status={chat.messagesNotRead > 0 ? true : false} />
+                            <Chat chatName={getGroupName(chat)} 
+                            chatUsers={formatUsernames(chat.idParticipants)} 
+                            status={chat.messagesNotRead > 0 ? true : false} 
+                            number={chat.messagesNotRead}/>
                         </Link>
                     ))
                 )}

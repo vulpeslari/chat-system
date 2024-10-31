@@ -11,9 +11,6 @@ import { ref, set, onValue, update, get, push } from "firebase/database";
 import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
 
-
-import addNotification from 'react-push-notification';
-
 // Inicializar o Realtime Database
 const ChatBox = () => {
     const [message, setMessage] = useState("");
@@ -23,26 +20,8 @@ const ChatBox = () => {
     const [isLoading, setIsLoading] = useState(true);
     const { userId, chatId } = useParams();
     const replyBarRef = useRef(null);
-    const chatContentRef = useRef(null);
-
-    // BASE NOTS
-    const sendNotification = () => {
-        console.log('aaaaaaaaaaa')
-        addNotification({
-            title: 'title',
-            message: 'message',
-            duration: 4000,
-            native: true
-        });
-    }
-
-    useEffect(() => {
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Permissão concedida para notificações');
-            }
-        });
-    }, []);
+    const messagesRef = useRef(null);
+    const [userStatus, setUserStatus] = useState({});
 
     useEffect(() => {
 
@@ -142,10 +121,39 @@ const ChatBox = () => {
 
     }, [chatId, userId]);
 
+    useEffect(() => {
+        const fetchUserStatus = (userUid) => {
+            const userRef = ref(database, `/user/${userUid}`);
+            onValue(userRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    setUserStatus((prevStatus) => ({
+                        ...prevStatus,
+                        [userUid]: snapshot.val().status
+                    }));
+                } else {
+                    console.log("Status não encontrado.");
+                }
+            });
+        };
+
+        if (currentChat?.idParticipants) {
+            currentChat.idParticipants.forEach((username) => {
+                // Encontre o userUid com base no username
+                const userUid = users.find(user => user.nome === username)?.id;
+
+                if (userUid) {
+                    fetchUserStatus(userUid);
+
+                } else {
+                    console.log(`ID não encontrado para o usuário: ${username}`);
+                }
+            });
+        }
+    }, [currentChat, users]);
 
     // GET USERNAMES FROM IDS
-     // Função manual para adicionar o userId ao array idUserRead
-     const markMessageAsRead = async (messageId) => {
+    // Função manual para adicionar o userId ao array idUserRead
+    const markMessageAsRead = async (messageId) => {
         const messageRef = ref(database, `/chats/${chatId}/messages/${messageId}`);
 
         // Obtém o snapshot atual da mensagem e atualiza manualmente
@@ -188,7 +196,7 @@ const ChatBox = () => {
         newMessage.message = encryptAES(newMessage.message, await fetchDescrypted());
         try {
             await push(messagesRef, newMessage);
-            console.log('Mensagem enviada com sucesso');
+            //console.log('Mensagem enviada com sucesso');
         } catch (error) {
             console.error('Erro ao enviar a mensagem:', error);
         }
@@ -201,14 +209,13 @@ const ChatBox = () => {
                 idUser: userId,
                 message,
                 timestamp: new Date().toISOString(),
-                idUserRead : [userId],
+                idUserRead: [userId],
             };
 
             // Verifique se todos os campos estão preenchidos corretamente
             if (newMessage.idChat && newMessage.idUser && newMessage.message && newMessage.timestamp) {
                 await sendMessageToAPI(newMessage);
                 setMessage("");  // Limpa a área de entrada
-                sendNotification();
             } else {
                 console.warn("Alguns campos estão indefinidos:", newMessage);
             }
@@ -216,7 +223,6 @@ const ChatBox = () => {
 
 
     };
-
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && e.ctrlKey) {
@@ -269,6 +275,7 @@ const ChatBox = () => {
                 }
 
                 const data = await response.json();
+                console.log("Chave AES descriptografada: ", data.plaintext);
                 return data.plaintext;
             } else {
                 console.log("Nenhuma chave encontrada para o usuário especificado.");
@@ -280,6 +287,13 @@ const ChatBox = () => {
         }
 
     }
+
+    // USADO PARA SEMPRE QUE UMA MENSAGEM FOR ENVIADA, LEVAR O SCROLL PARA BAIXO
+    useEffect(() => {
+        if (messagesRef.current) {
+            messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+        }
+    }, [messages]);
 
     return (
         <div className='chatbox'>
@@ -295,7 +309,7 @@ const ChatBox = () => {
                             <img className="user-icon" src="/img/user-icon.jpg" alt="User Icon" />
                             {renderChatHeader()}
                         </div>
-                        {/* Verifique se é o dono aqui, baseado no `isOwner` que já foi calculado na função renderChatHeader */}
+                        {/* O DONO DO CHAT É O ÚNICO QUE PODE EDITAR A CONVERSA*/}
                         {currentChat.ownerId === userId && (
                             <Dropdown className='chatbox-dropdown' options={[
                                 { label: 'Editar Conversa', route: `/${userId}/edit-chat/${chatId}` }
@@ -306,8 +320,8 @@ const ChatBox = () => {
                     <div className='backup-msg'>
                         <h4>As mensagens enviadas e recebidas são salvas automaticamente a cada 30 dias.</h4>
                     </div>
-                    <div className='chat-content' ref={chatContentRef}>
-                        <div className='messages'>
+                    <div className='chat-content'>
+                        <div className='messages' ref={messagesRef}>
                             {messages.length > 0 ? (
                                 messages.map((msg) => {
                                     markMessageAsRead(msg.id)
@@ -320,6 +334,7 @@ const ChatBox = () => {
                                             timestamp={(msg.timestamp).toLocaleString()}
                                             status={msg.status}
                                             username={user ? (msg.idUser === userId ? 'you' : user.nome) : 'Usuário desconhecido'}
+                                            status_user={userStatus[msg.idUser] === "online" ? "var(--orange)" : "gray"}
                                         />
                                     );
                                 })
@@ -360,3 +375,4 @@ const ChatBox = () => {
 };
 
 export default ChatBox;
+

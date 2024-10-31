@@ -25,7 +25,8 @@
     max-width: calc(100% - 60px);
     overflow: hidden;
     white-space: nowrap;
-    margin-bottom: 10px
+    margin-bottom: 10px;
+    margin-left: 25px;
 }
 
 .user-info h2 {
@@ -89,13 +90,45 @@
 }
 
 .notif {
-    color: var(--orange);
-    background-color: var(--mediumgray);
+    background-color: var(--orange);
+    border: 3px solid var(--mediumgray);
     border-radius: 100%;
-    font-size: 24px;
+    min-height: 13px;
+    min-width: 13px;
+    padding: 4px;
+    font-size: 8px;
+    text-align: center;
     transform: translate(-50%, -60%);
+    margin-right: -25px;
 }
 
 .users-options .users-options-list .user-box:hover {
     background-color: var(--mediumgray);
+}
+
+.user-config-box {
+    background-color: var(--darkgray);
+    width: 100%;
+    padding: 35px;
+}
+
+.user-config {
+    display: flex;
+}
+
+.user-config .user-info {
+    margin: 25px;
+}
+
+.user-config .user-icon {
+    border-radius: 0;
+    width: 200px;
+    height: 200px;
+    margin: 30px 0;
+}
+
+.user-config h2 {
+    color: var(--white);
+    padding: 10px;
+    border-left: 4px solid var(--orange);
 }

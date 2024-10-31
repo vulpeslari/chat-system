@@ -1,10 +1,11 @@
 .rotbar {
     background-color: var(--gray);
-    height: 729px;
-    width: 100px;
+    height: 714px;
+    max-width: 100px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding-top: 15px;
 }
 
 .user-icon {
@@ -32,5 +33,10 @@
 
 .exit {
     transform: rotate(-180deg);
-    margin-top: 450px;
+    margin-top: 460px;
+}
+
+.user {
+    width: 40px;
+    height: 40px;
 }

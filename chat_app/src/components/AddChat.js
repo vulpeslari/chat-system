@@ -5,8 +5,11 @@ import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue, update, push, get, remove} from "firebase/database"; // Adicione get para buscar dados
+import { ref, set, onValue, update, push, get, remove} from "firebase/database"; 
 import { database } from '../services/firebaseConfig';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AddChat = () => {
     const { userId, chatId } = useParams();
@@ -18,11 +21,32 @@ const AddChat = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isGroupChat, setIsGroupChat] = useState(false);
 
+    const chatError = (message) => toast.error(message, {
+        position: "top-left",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: true,
+        progress: undefined,
+        theme: "dark"
+    });
+
+    const chatDel = (message) => toast.info(message, {
+        position: "top-left",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: true,
+        progress: undefined,
+        theme: "dark"
+    });
+
     useEffect(() => {
         setIsGroupChat(selectedUsers.length > 1);
     }, [selectedUsers]);
 
-    // Busca os usuários disponíveis
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -48,7 +72,6 @@ const AddChat = () => {
         fetchUsers();
     }, []);
 
-    // Busca os dados do chat se chatId estiver presente
     useEffect(() => {
         const fetchChatData = async () => {
             if (chatId) {
@@ -57,7 +80,7 @@ const AddChat = () => {
                 if (snapshot.exists()) {
                     const chatData = snapshot.val();
                     setNomeGrupo(chatData.nomeGrupo || '');
-                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId)); // Filtra o userId do dono do chat
+                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId));
                 } else {
                     console.log("Chat não encontrado");
                 }
@@ -80,10 +103,10 @@ const AddChat = () => {
 
     const handleSubmit = async () => {
         if (isGroupChat && nomeGrupo.trim() === '') {
-            alert('Por favor, preencha o nome do grupo.');
+            chatError('Dê um nome para o grupo!');
             return;
         }
-
+        
         const chatRef = ref(database, "chats/");
         const payload = isGroupChat
             ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
@@ -100,8 +123,8 @@ const AddChat = () => {
 
         try {
             if (chatId) {
-                // await update(ref(database, `chats/${chatId}`), payload);
-                // await remove(ref(database, `chats/${chatId}/messages`))
+                await update(ref(database, `chats/${chatId}`), payload);
+                await remove(ref(database, `chats/${chatId}/messages`))
                 console.log('Chat atualizado:', payload);
             } else {
                 const newChatRef = await push(chatRef, payload);
@@ -113,15 +136,13 @@ const AddChat = () => {
         }
     };
 
-    // Função para excluir o chat
     const handleDeleteChat = async () => {
         if (!chatId) return;
 
         try {
             await remove(ref(database, `chats/${chatId}/`))
             console.log('Chat excluído com sucesso');
-            navigate(`/${userId}`); // Redireciona para a rota do usuário após a exclusão
-
+            navigate(`/${userId}`);
         } catch (error) {
             console.error('Erro ao fazer requisição de exclusão:', error);
         }
@@ -141,6 +162,8 @@ const AddChat = () => {
         }
 
         const data = await response.json();
+        
+        console.log('Chave AES Criptografada:', data.encryptedAESKey);
         return data.encryptedAESKey;
     };
 
@@ -171,14 +194,7 @@ const AddChat = () => {
                     <>
                         {isGroupChat && (
                             <div className='chat-info'>
-                                <h2>Foto do Chat</h2>
-                                <div className='chat-photo-container'>
-                                    <label htmlFor='chat-photo'>
-                                        <img className="chat-icon" src="/img/user-icon.jpg" alt="chat icon" />
-                                    </label>
-                                    <input id='chat-photo' type='file' />
-                                </div>
-                                <h2>Nome do Grupo</h2>
+                                <h2 className='required'>Nome do Grupo</h2>
                                 <div className='chat-name-container'>
                                     <input
                                         id='chat-name'
@@ -186,6 +202,7 @@ const AddChat = () => {
                                         placeholder='Dê um nome ao grupo'
                                         value={nomeGrupo}
                                         onChange={(e) => setNomeGrupo(e.target.value)}
+                                        required
                                     />
                                     <label htmlFor='chat-name'>
                                         <FaPen className='menu-icon' />
@@ -200,7 +217,6 @@ const AddChat = () => {
                                     <UserSelect
                                         key={index}
                                         contactName={user.nome}
-                                        contactStatus="online"
                                         isSelected={selectedUsers.includes(user.id)}
                                         onSelect={() => handleUserSelect(user.id)}
                                     />
@@ -220,6 +236,7 @@ const AddChat = () => {
                     </button>
                 )}
             </div>
+            <ToastContainer />
         </div>
     );
 };

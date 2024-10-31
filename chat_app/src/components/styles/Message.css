@@ -71,3 +71,8 @@
 .user-message.reply .timestamp p {
     background-color: transparent;
 }
+
+.message-info .status {
+    font-size: 14px;
+    margin-left: 10px;
+}

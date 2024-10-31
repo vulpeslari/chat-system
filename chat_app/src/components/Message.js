@@ -1,6 +1,7 @@
 import React from 'react';
 import "./styles/Message.css";
 import { IoCheckmarkDoneOutline } from "react-icons/io5";
+import { FaCircle } from "react-icons/fa";
 
 {/* TIMESTAMP FORMATTING */ }
 const formatTimestamp = (timestamp) => {
@@ -11,7 +12,7 @@ const formatTimestamp = (timestamp) => {
     }).format(date);
 };
 
-const Message = ({ type, content, timestamp, username, status }) => {
+const Message = ({ type, content, timestamp, username, status, status_user }) => {
     const formattedTimestamp = formatTimestamp(timestamp);
 
     {/* SEEN/UNSEEN MESSAGE ICON */}
@@ -21,7 +22,9 @@ const Message = ({ type, content, timestamp, username, status }) => {
         <div className={`user-message ${type === 'reply' ? 'reply' : ''}`}>
             <img className="user-icon" src="/img/user-icon.jpg" alt="User Icon" />
             <div className='message-info'>
-                <h1>@{username}</h1>
+                <h1>@{username}
+                    <FaCircle className='status' color={status_user}/>
+                </h1>
                 <p>{content}</p>
                 <div className='timestamp'>
                     <p>{formattedTimestamp}</p>
