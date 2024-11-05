@@ -360,7 +360,7 @@ const ChatBox = () => {
                     </div>
 
                     <div className='backup-msg'>
-                        <h4>As mensagens enviadas e recebidas são salvas automaticamente a cada 30 dias.</h4>
+                        <h4>As mensagens estão sendo protegidas por criptografia.</h4>
                     </div>
                     <div className='chat-content'>
                         <div className='messages' ref={messagesRef}>
