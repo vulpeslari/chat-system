@@ -152,19 +152,29 @@ const ChatBox = () => {
     }, [currentChat, users]);
 
     // GET USERNAMES FROM IDS
-    // Função manual para adicionar o userId ao array idUserRead
+    // Função para marcar a mensagem como lida
     const markMessageAsRead = async (messageId) => {
         const messageRef = ref(database, `/chats/${chatId}/messages/${messageId}`);
 
-        // Obtém o snapshot atual da mensagem e atualiza manualmente
-        onValue(messageRef, (snapshot) => {
-            const messageData = snapshot.val();
-            const idUserRead = messageData?.idUserRead || [];
+        // Obtém o snapshot atual da mensagem
+        const snapshot = await get(messageRef);
+        const messageData = snapshot.val();
 
+        // Verifica se a mensagem existe
+        if (messageData) {
+            const idUserRead = messageData.idUserRead || [];
+
+            // Verifica se o userId já está no array idUserRead
             if (!idUserRead.includes(userId)) {
-                update(messageRef, { idUserRead: [...idUserRead, userId] });
+                // Se não estiver, atualiza o array com o userId
+                await update(messageRef, { idUserRead: [...idUserRead, userId] });
+                console.log(`Mensagem ${messageId} marcada como lida pelo usuário ${userId}`);
+            } else {
+                console.log(`O usuário ${userId} já marcou a mensagem ${messageId} como lida.`);
             }
-        }, { onlyOnce: true }); // Faz a leitura uma vez para evitar loops
+        } else {
+            console.error(`Mensagem ${messageId} não encontrada.`);
+        }
     };
 
     const getUsernamesFromIds = (chatUserIds) => {

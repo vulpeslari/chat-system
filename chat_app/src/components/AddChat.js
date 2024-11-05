@@ -5,7 +5,7 @@ import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue, update, push, get, remove} from "firebase/database"; 
+import { ref, set, onValue, update, push, get, remove} from "firebase/database";
 import { database } from '../services/firebaseConfig';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -106,7 +106,7 @@ const AddChat = () => {
             chatError('Dê um nome para o grupo!');
             return;
         }
-        
+
         const chatRef = ref(database, "chats/");
         const payload = isGroupChat
             ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
@@ -116,17 +116,29 @@ const AddChat = () => {
         payload.timestamp = {};
         const keysChat = await fetchAESKey(payload.idUsers);
         let i = 0;
+
         for (const id of payload.idUsers) {
             payload.keys[id] = keysChat[i];
             i++;
         }
 
         try {
+            // Se o chat for um chat entre dois usuários (não um grupo)
+            if (!isGroupChat && selectedUsers.length === 1) {
+                // Verifica se já existe um chat entre esses dois usuários
+                const existingChat = await checkExistingChat([userId, selectedUsers[0]]);
+                if (existingChat) {
+                    chatError('Já existe um chat entre esses usuários.');
+                    return;
+                }
+            }
+
             if (chatId) {
                 await update(ref(database, `chats/${chatId}`), payload);
-                await remove(ref(database, `chats/${chatId}/messages`))
+                await remove(ref(database, `chats/${chatId}/messages`));
                 console.log('Chat atualizado:', payload);
             } else {
+
                 const newChatRef = await push(chatRef, payload);
                 console.log('ID do novo chat:', newChatRef.key);
             }
@@ -136,16 +148,37 @@ const AddChat = () => {
         }
     };
 
-    const handleDeleteChat = async () => {
-        if (!chatId) return;
+    // Função para verificar se já existe um chat entre dois usuários
+    const checkExistingChat = async (userIds) => {
+        const chatsRef = ref(database, "chats/");
+        const snapshot = await get(chatsRef);
 
-        try {
-            await remove(ref(database, `chats/${chatId}/`))
-            console.log('Chat excluído com sucesso');
-            navigate(`/${userId}`);
-        } catch (error) {
-            console.error('Erro ao fazer requisição de exclusão:', error);
+        if (snapshot.exists()) {
+            const chats = snapshot.val();
+            // Itera por cada chat no banco de dados
+            for (const chatId in chats) {
+                const chat = chats[chatId];
+                const chatUsers = chat.idUsers;
+
+                // Verifica se os dois usuários estão no chat (sem se importar com a ordem)
+                if (chatUsers.length === userIds.length && userIds.every(userId => chatUsers.includes(userId))) {
+                    return true; // Já existe um chat entre esses usuários
+                }
+            }
         }
+        return false; // Não existe um chat entre os usuários
+    };
+
+    const handleDeleteChat = async () => {
+    if (!chatId) return;
+
+    try {
+        await remove(ref(database, `chats/${chatId}/`))
+        console.log('Chat excluído com sucesso');
+        navigate(`/${userId}`);
+    } catch (error) {
+        console.error('Erro ao fazer requisição de exclusão:', error);
+    }
     };
 
     const fetchAESKey = async (userId) => {
@@ -162,7 +195,7 @@ const AddChat = () => {
         }
 
         const data = await response.json();
-        
+
         console.log('Chave AES Criptografada:', data.encryptedAESKey);
         return data.encryptedAESKey;
     };
