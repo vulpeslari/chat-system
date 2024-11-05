@@ -32,17 +32,6 @@ const AddChat = () => {
         theme: "dark"
     });
 
-    const chatDel = (message) => toast.info(message, {
-        position: "top-left",
-        autoClose: 2000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: false,
-        draggable: true,
-        progress: undefined,
-        theme: "dark"
-    });
-
     useEffect(() => {
         setIsGroupChat(selectedUsers.length > 1);
     }, [selectedUsers]);
@@ -71,23 +60,6 @@ const AddChat = () => {
         };
         fetchUsers();
     }, []);
-
-    useEffect(() => {
-        const fetchChatData = async () => {
-            if (chatId) {
-                const chatRef = ref(database, `chats/${chatId}`);
-                const snapshot = await get(chatRef);
-                if (snapshot.exists()) {
-                    const chatData = snapshot.val();
-                    setNomeGrupo(chatData.nomeGrupo || '');
-                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId));
-                } else {
-                    console.log("Chat não encontrado");
-                }
-            }
-        };
-        fetchChatData();
-    }, [chatId, userId]);
 
     const filteredUsers = users
         .filter(user => user.id !== userId)
@@ -169,18 +141,6 @@ const AddChat = () => {
         return false; // Não existe um chat entre os usuários
     };
 
-    const handleDeleteChat = async () => {
-    if (!chatId) return;
-
-    try {
-        await remove(ref(database, `chats/${chatId}/`))
-        console.log('Chat excluído com sucesso');
-        navigate(`/${userId}`);
-    } catch (error) {
-        console.error('Erro ao fazer requisição de exclusão:', error);
-    }
-    };
-
     const fetchAESKey = async (userId) => {
         const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyChat', {
             method: 'POST',
@@ -203,7 +163,7 @@ const AddChat = () => {
     return (
         <div className='pop-up'>
             <div className='top-bar'>
-                <h1>{chatId ? 'Editar conversa' : 'Nova conversa'}</h1>
+                <h1>Nova conversa</h1>
                 <Link to={`/${userId}`}>
                     <IoCloseSharp className='menu-icon' />
                 </Link>
@@ -261,13 +221,8 @@ const AddChat = () => {
             </div>
             <div className='footer'>
                 <button className='button' onClick={handleSubmit}>
-                    {chatId ? 'Salvar alterações' : 'Criar chat '}
+                    Criar chat
                 </button>
-                {chatId && (
-                    <button className='button delete' onClick={handleDeleteChat}>
-                        Excluir Chat
-                    </button>
-                )}
             </div>
             <ToastContainer />
         </div>

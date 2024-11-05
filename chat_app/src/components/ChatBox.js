@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import "./styles/ChatBox.css";
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { IoSend } from "react-icons/io5";
 import Message from "./Message";
 import Dropdown from "./Dropdown";
 import { LineWave } from 'react-loader-spinner';
 import { getDatabase } from 'firebase/database'
 import { initializeApp } from 'firebase/app';
-import { ref, set, onValue, update, get, push } from "firebase/database";
+import { ref, set, onValue, update, get, push, remove } from "firebase/database";
 import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
 
@@ -21,6 +21,7 @@ const ChatBox = () => {
     const { userId, chatId } = useParams();
     const replyBarRef = useRef(null);
     const messagesRef = useRef(null);
+    const navigate = useNavigate();
     const [userStatus, setUserStatus] = useState({});
 
     useEffect(() => {
@@ -120,6 +121,32 @@ const ChatBox = () => {
         fetchChatAndMessages();
 
     }, [chatId, userId]);
+
+    // Função para excluir o chat
+    const handleDeleteChat = async () => {
+        if (!chatId) return;
+
+        try {
+            await remove(ref(database, `chats/${chatId}/`));
+            console.log('Chat excluído com sucesso');
+            navigate(`/${userId}`);
+        } catch (error) {
+            console.error('Erro ao excluir o chat:', error);
+        }
+    };
+
+    // Função para limpar as mensagens do chat
+    const handleClearMessages = async () => {
+        if (!chatId) return;
+
+        try {
+            await remove(ref(database, `chats/${chatId}/messages/`));
+            console.log('Mensagens limpas com sucesso');
+            setMessages([]); // Limpa as mensagens no estado local
+        } catch (error) {
+            console.error('Erro ao limpar as mensagens:', error);
+        }
+    };
 
     useEffect(() => {
         const fetchUserStatus = (userUid) => {
@@ -321,9 +348,14 @@ const ChatBox = () => {
                         </div>
                         {/* O DONO DO CHAT É O ÚNICO QUE PODE EDITAR A CONVERSA*/}
                         {currentChat.ownerId === userId && (
-                            <Dropdown className='chatbox-dropdown' options={[
-                                { label: 'Editar Conversa', route: `/${userId}/edit-chat/${chatId}` }
-                            ]} />
+                            <Dropdown
+                                className='chatbox-dropdown'
+                                options={[
+                                    { label: 'Excluir Conversa', action: handleDeleteChat },
+                                    { label: 'Limpar Conversa', action: handleClearMessages }
+                                ]}
+                                onSelect={(option) => option.action()}
+                            />
                         )}
                     </div>
 

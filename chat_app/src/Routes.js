@@ -64,18 +64,6 @@ const Routes = () => {
                     </PrivateRoute>
                 </>} />
 
-                {/* EDIT CHAT */}
-                <Route path={`/:userId/edit-chat/:chatId`} element={<>
-                    <PrivateRoute>
-                        <div className="home-container">
-                            <AddChat />
-                            <RotBar />
-                            <ChatMenu />
-                            <ChatBox />
-                        </div>
-                    </PrivateRoute>
-                </>} />
-
                 {/* USER INFO */}
                 <Route path={`/:userId/user`} element={<>
                     <PrivateRoute>

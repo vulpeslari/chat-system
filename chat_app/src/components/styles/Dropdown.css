@@ -27,14 +27,11 @@
     line-height: 27px;
 }
 
-.dropdown-menu a {
-    text-decoration: none;
-    color: var(--white);
-}
 
-.dropdown-menu a:hover, 
+.dropdown-menu li:hover, 
 .dropdown-toggle:hover {
     color: var(--orange);
+    cursor: pointer;
 }
 
 .chatbox-dropdown {
