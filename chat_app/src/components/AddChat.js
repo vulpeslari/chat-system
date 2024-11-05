@@ -69,8 +69,9 @@ const AddChat = () => {
 
     // Filtra usuários com base na pesquisa e exclui o usuário atual
     const filteredUsers = users
-        .filter(user => user.id !== userId)
-        .filter(user => user.nome.toLowerCase().includes(searchTerm.toLowerCase()));
+    .filter(user => user.id !== userId)
+    .filter(user => user.nome && user.nome.toLowerCase().includes(searchTerm.toLowerCase()));
+
 
     // Alterna a seleção de um usuário para o chat
     const handleUserSelect = (userId) => {
