@@ -5,15 +5,18 @@ import { IoCloseSharp, IoSearch } from "react-icons/io5";
 import { FaPen } from "react-icons/fa";
 import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
-import { ref, set, onValue, update, push, get, remove} from "firebase/database";
+import { ref, set, onValue, update, push, get, remove } from "firebase/database";
 import { database } from '../services/firebaseConfig';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// Componente para adicionar um novo chat
 const AddChat = () => {
     const { userId, chatId } = useParams();
     const navigate = useNavigate();
+
+    // Estados para gerenciar dados e interface
     const [searchTerm, setSearchTerm] = useState('');
     const [nomeGrupo, setNomeGrupo] = useState('');
     const [selectedUsers, setSelectedUsers] = useState([]);
@@ -21,6 +24,7 @@ const AddChat = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isGroupChat, setIsGroupChat] = useState(false);
 
+    // Função para exibir erro via toast
     const chatError = (message) => toast.error(message, {
         position: "top-left",
         autoClose: 2000,
@@ -32,10 +36,12 @@ const AddChat = () => {
         theme: "dark"
     });
 
+    // Define se o chat é de grupo, baseado na quantidade de usuários selecionados
     useEffect(() => {
         setIsGroupChat(selectedUsers.length > 1);
     }, [selectedUsers]);
 
+    // Efeito para buscar usuários do banco de dados Firebase
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -51,7 +57,7 @@ const AddChat = () => {
                     } else {
                         console.log("Nenhum dado encontrado.");
                     }
-                })
+                });
             } catch (error) {
                 console.error('Erro ao buscar usuários:', error);
             } finally {
@@ -61,10 +67,12 @@ const AddChat = () => {
         fetchUsers();
     }, []);
 
+    // Filtra usuários com base na pesquisa e exclui o usuário atual
     const filteredUsers = users
         .filter(user => user.id !== userId)
         .filter(user => user.nome.toLowerCase().includes(searchTerm.toLowerCase()));
 
+    // Alterna a seleção de um usuário para o chat
     const handleUserSelect = (userId) => {
         setSelectedUsers(prevSelectedUsers =>
             prevSelectedUsers.includes(userId)
@@ -73,6 +81,7 @@ const AddChat = () => {
         );
     };
 
+    // Função de submissão para criar ou atualizar chat
     const handleSubmit = async () => {
         if (isGroupChat && nomeGrupo.trim() === '') {
             chatError('Dê um nome para o grupo!');
@@ -86,18 +95,18 @@ const AddChat = () => {
 
         payload.keys = {};
         payload.timestamp = {};
+
+        // Busca chaves AES para cada participante
         const keysChat = await fetchAESKey(payload.idUsers);
         let i = 0;
-
         for (const id of payload.idUsers) {
             payload.keys[id] = keysChat[i];
             i++;
         }
 
         try {
-            // Se o chat for um chat entre dois usuários (não um grupo)
+            // Verifica se o chat entre dois usuários já existe (não é um grupo)
             if (!isGroupChat && selectedUsers.length === 1) {
-                // Verifica se já existe um chat entre esses dois usuários
                 const existingChat = await checkExistingChat([userId, selectedUsers[0]]);
                 if (existingChat) {
                     chatError('Já existe um chat entre esses usuários.');
@@ -105,12 +114,21 @@ const AddChat = () => {
                 }
             }
 
+            // Verifica se já existe um chat de grupo com o mesmo nome e usuários
+            if (isGroupChat) {
+                const existingGroupChat = await checkExistingGroupChat(nomeGrupo, payload.idUsers);
+                if (existingGroupChat) {
+                    chatError('Já existe um chat de grupo com essas pessoas e o mesmo nome.');
+                    return;
+                }
+            }
+
+            // Se for um chat existente, atualiza-o; caso contrário, cria um novo
             if (chatId) {
                 await update(ref(database, `chats/${chatId}`), payload);
                 await remove(ref(database, `chats/${chatId}/messages`));
                 console.log('Chat atualizado:', payload);
             } else {
-
                 const newChatRef = await push(chatRef, payload);
                 console.log('ID do novo chat:', newChatRef.key);
             }
@@ -120,7 +138,7 @@ const AddChat = () => {
         }
     };
 
-    // Função para verificar se já existe um chat entre dois usuários
+    // Verifica se já existe um chat entre dois usuários
     const checkExistingChat = async (userIds) => {
         const chatsRef = ref(database, "chats/");
         const snapshot = await get(chatsRef);
@@ -132,7 +150,7 @@ const AddChat = () => {
                 const chat = chats[chatId];
                 const chatUsers = chat.idUsers;
 
-                // Verifica se os dois usuários estão no chat (sem se importar com a ordem)
+                // Verifica se os dois usuários estão no chat (independente da ordem)
                 if (chatUsers.length === userIds.length && userIds.every(userId => chatUsers.includes(userId))) {
                     return true; // Já existe um chat entre esses usuários
                 }
@@ -141,6 +159,28 @@ const AddChat = () => {
         return false; // Não existe um chat entre os usuários
     };
 
+    // Verifica se já existe um grupo de mesmo nome entre mais de dois usuários
+    const checkExistingGroupChat = async (groupName, userIds) => {
+        const chatsRef = ref(database, "chats/");
+        const snapshot = await get(chatsRef);
+
+        if (snapshot.exists()) {
+            const chats = snapshot.val();
+            // Itera por cada chat no banco de dados
+            for (const chatId in chats) {
+                const chat = chats[chatId];
+                const chatUsers = chat.idUsers;
+
+                // Verifica se os usuários são os mesmos e se o nome do grupo é igual
+                if (chat.nomeGrupo === groupName && chatUsers.length === userIds.length && userIds.every(userId => chatUsers.includes(userId))) {
+                    return true; // Já existe um chat de grupo com esses usuários e nome
+                }
+            }
+        }
+        return false; // Não existe um chat de grupo com o nome e usuários especificados
+    };
+
+    // Função para obter chave AES para cada usuário do chat
     const fetchAESKey = async (userId) => {
         const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyChat', {
             method: 'POST',
@@ -155,11 +195,11 @@ const AddChat = () => {
         }
 
         const data = await response.json();
-
         console.log('Chave AES Criptografada:', data.encryptedAESKey);
         return data.encryptedAESKey;
     };
 
+    // Renderização da interface
     return (
         <div className='pop-up'>
             <div className='top-bar'>
