@@ -68,3 +68,26 @@
     cursor: pointer;
     float: right;
 }
+
+.verify p {
+    font-size: 15px;
+    margin-bottom: 20px;
+    margin-top: -10px;
+    text-align: justify;
+}
+
+.verify span {
+    color: var(--orange);
+    cursor: pointer;
+}
+
+.verify input[type='text'] {
+    background-color: var(--mediumgray);
+    padding: 15px;
+    margin-bottom: 200px;
+    width: 94%;
+}
+
+.verify .button {
+    transform: translateX(85%);
+}
