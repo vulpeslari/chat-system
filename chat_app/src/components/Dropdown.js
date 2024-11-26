@@ -20,7 +20,7 @@ const Dropdown = ({ options, className, onSelect }) => {
               className="dropdown-item"
               onClick={() => {
                 onSelect(option);
-                setIsOpen(false); 
+                setIsOpen(false);
               }}
             >
               {option.label}

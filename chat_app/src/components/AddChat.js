@@ -7,9 +7,12 @@ import UserSelect from './UserSelect';
 import { LineWave } from 'react-loader-spinner';
 import { ref, set, onValue, update, push, get, remove } from "firebase/database";
 import { database } from '../services/firebaseConfig';
-
+import { generateAES, encryptAES, decryptAES } from '../services/cryptograph';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { decryptRSA, getPrivateKey, encryptRSA } from '../services/crypto-utils';
+
+const EXPIRED_TIME = 1*1*60*1000;
 
 // Componente para adicionar um novo chat
 const AddChat = () => {
@@ -23,6 +26,17 @@ const AddChat = () => {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isGroupChat, setIsGroupChat] = useState(false);
+
+    const chatDel = (message) => toast.info(message, {
+        position: "top-left",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: true,
+        progress: undefined,
+        theme: "dark"
+    });
 
     // Função para exibir erro via toast
     const chatError = (message) => toast.error(message, {
@@ -81,29 +95,44 @@ const AddChat = () => {
                 : [...prevSelectedUsers, userId]
         );
     };
+    useEffect(() => {
+        const fetchChatData = async () => {
+            if (chatId) {
+                const chatRef = ref(database, `chats/${chatId}`);
+                const snapshot = await get(chatRef);
+                if (snapshot.exists()) {
+                    const chatData = snapshot.val();
+                    setNomeGrupo(chatData.nomeGrupo || '');
+                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId));
+                } else {
+                    console.log("Chat não encontrado");
+                }
+            }
+        };
+        fetchChatData();
+    }, [chatId, userId]);
 
-    // Função de submissão para criar ou atualizar chat
+    const handleDeleteChat = async () => {
+        if (!chatId) return;
+
+        try {
+            await remove(ref(database, `chats/${chatId}/`))
+            console.log('Chat excluído com sucesso');
+            navigate(`/${userId}`);
+        } catch (error) {
+            console.error('Erro ao fazer requisição de exclusão:', error);
+        }
+    };
+
     const handleSubmit = async () => {
         if (isGroupChat && nomeGrupo.trim() === '') {
             chatError('Dê um nome para o grupo!');
             return;
         }
 
-        const chatRef = ref(database, "chats/");
         const payload = isGroupChat
             ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
             : { idUsers: [userId, selectedUsers[0]] };
-
-        payload.keys = {};
-        payload.timestamp = {};
-
-        // Busca chaves AES para cada participante
-        const keysChat = await fetchAESKey(payload.idUsers);
-        let i = 0;
-        for (const id of payload.idUsers) {
-            payload.keys[id] = keysChat[i];
-            i++;
-        }
 
         try {
             // Verifica se o chat entre dois usuários já existe (não é um grupo)
@@ -115,6 +144,7 @@ const AddChat = () => {
                 }
             }
 
+            const chatRef = ref(database, "chats/");
             // Verifica se já existe um chat de grupo com o mesmo nome e usuários
             if (isGroupChat) {
                 const existingGroupChat = await checkExistingGroupChat(nomeGrupo, payload.idUsers);
@@ -132,12 +162,50 @@ const AddChat = () => {
             } else {
                 const newChatRef = await push(chatRef, payload);
                 console.log('ID do novo chat:', newChatRef.key);
+
+                // Gera a chave AES e define a referência para o SDK
+                const chatId = newChatRef.key;
+                const keyAES = generateAES();
+                const keyRef = ref(database, `sdk/${chatId}/key`);
+                console.log("chave aes gerada para o chat:", keyAES)
+
+                // Objeto para armazenar as chaves criptografadas
+                const encryptedKeys = {
+                    version: 1,
+                    expirationTimestamp: Date.now() + EXPIRED_TIME, // Expiration time em milissegundos
+                    used: false,
+                };
+
+                // Itera sobre os usuários para criptografar e armazenar as chaves
+                for (const idUser of payload.idUsers) {
+                    try {
+                        const chatKeyRef = ref(database, `user/${idUser}/public_key`);
+                        const snapshot = await get(chatKeyRef);
+
+                        if (snapshot.exists()) {
+                            const publicKey = snapshot.val();
+                            const encryptedKey = await encryptRSA(publicKey, keyAES);
+
+                            encryptedKeys[idUser] = encryptedKey; // Armazena a chave com o ID do usuário
+                        } else {
+                            console.warn(`Chave pública não encontrada para o usuário: ${idUser}`);
+                        }
+                    } catch (error) {
+                        console.error(`Erro ao processar a chave pública do usuário ${idUser}:`, error);
+                    }
+                }
+                console.log(encryptedKeys)
+
+                // Salva a estrutura no banco de dados
+                await set(keyRef, encryptedKeys);
             }
+
             navigate(`/${userId}`);
         } catch (error) {
             console.error('Erro ao criar/atualizar chat:', error);
         }
     };
+
 
     // Verifica se já existe um chat entre dois usuários
     const checkExistingChat = async (userIds) => {
@@ -204,7 +272,7 @@ const AddChat = () => {
     return (
         <div className='pop-up'>
             <div className='top-bar'>
-                <h1>Nova conversa</h1>
+            <h1>{chatId ? 'Editar conversa' : 'Nova conversa'}</h1>
                 <Link to={`/${userId}`}>
                     <IoCloseSharp className='menu-icon' />
                 </Link>
@@ -262,7 +330,7 @@ const AddChat = () => {
             </div>
             <div className='footer'>
                 <button className='button' onClick={handleSubmit}>
-                    Criar chat
+                    {chatId ? 'Salvar alterações' : 'Criar chat '}
                 </button>
             </div>
             <ToastContainer />

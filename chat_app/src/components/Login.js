@@ -8,6 +8,7 @@ import { AppContext } from '../AppContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SendVerificationEmail } from '../services/SendVerificationEmail';
+import { rotationChat , verifyExpiration} from '../services/rotationKeys';
 
 const Login = () => {
     const { setUserUid } = useContext(AppContext);
@@ -43,6 +44,8 @@ const Login = () => {
         const userRf = ref(database, `/user/${user.user.uid}`);
         const status = { status: "online" };
 
+
+        rotationChat(user.user.uid)
         update(userRf, status)
             .then(() => {
                 setUserUid(user.user.uid);

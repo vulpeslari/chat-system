@@ -10,6 +10,7 @@ import { initializeApp } from 'firebase/app';
 import { ref, set, onValue, update, get, push, remove } from "firebase/database";
 import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
+import { decryptRSA, getPrivateKey , getUserEncryptedKey} from '../services/crypto-utils';
 
 // Inicializar o Realtime Database
 const ChatBox = () => {
@@ -76,40 +77,54 @@ const ChatBox = () => {
 
                 const messagesRef = ref(database, `/chats/${chatId}/messages/`);
 
-                const keyAES = await fetchDescrypted()
-
-                onValue(messagesRef, (snapshot) => {
+                onValue(messagesRef, async (snapshot) => {
                     const messagesData = snapshot.val();
 
                     if (messagesData) {
-                        const messagesArray = Object.keys(messagesData).map(key => {
-                            const message = messagesData[key];
-                            const { idUser, idUserRead = [] } = message;
+                        try {
+                            const messagesArray = await Promise.all(
+                                Object.keys(messagesData).map(async (key) => {
+                                    const message = messagesData[key];
+                                    const { idUser, idUserRead = [] } = message;
 
-                            // Verifique se `message.message` está definido antes de continuar
-                            if (message.message === undefined) {
-                                console.warn(`Mensagem ausente para a chave: ${key}`);
-                                return null; // Ignora esta mensagem caso esteja indefinida
-                            }
+                                    // Ignora mensagens sem conteúdo
+                                    if (!message.message) {
+                                        console.warn(`Mensagem ausente para a chave: ${key}`);
+                                        return null;
+                                    }
 
-                            // Define o status da mensagem
-                            const status = idUserRead.length === qtde ? "seen" : "noseen";
+                                    try {
+                                        const decryptedMessage = decryptAES(
+                                            message.message,
+                                            await getVersionKey(message.keyVersion)
+                                        );
 
-                            return {
-                                id: key,
-                                idUser,
-                                message: decryptAES(message.message, keyAES),
-                                timestamp: message.timestamp,
-                                status: status,
-                            };
-                        }).filter(Boolean); // Remove valores nulos
+                                        const status = idUserRead.length === qtde ? "seen" : "noseen";
 
-                        setMessages(messagesArray);
+                                        return {
+                                            id: key,
+                                            idUser,
+                                            message: decryptedMessage,
+                                            timestamp: message.timestamp,
+                                            status: status,
+                                        };
+                                    } catch (error) {
+                                        console.error(`Erro ao processar a mensagem ${key}:`, error);
+                                        return null;
+                                    }
+                                })
+                            );
+
+                            setMessages(messagesArray.filter(Boolean)); // Remove mensagens nulas
+                        } catch (error) {
+                            console.error('Erro ao processar mensagens:', error);
+                            setMessages([]); // Define como vazio em caso de erro
+                        }
                     } else {
-                        setMessages([]);
+                        setMessages([]); // Sem mensagens
                     }
 
-                    setIsLoading(false); // Marcar como carregado após carregar os dados
+                    setIsLoading(false); // Marca como carregado mesmo sem mensagens
                 });
 
             } catch (error) {
@@ -122,6 +137,45 @@ const ChatBox = () => {
 
     }, [chatId, userId]);
 
+    const getVersionKey = async (version) => {
+        try {
+          const dataRef = ref(database, `sdk/${chatId}/key/version`);
+          const snapshot = await get(dataRef);
+          const currentVersion = snapshot.val();
+
+          const keyRef = ref(database, `sdk/${chatId}/key/${userId}`)
+          const snapshotKey = await get(keyRef);
+          const keyEncrypted = snapshotKey.val();
+          const key = await decryptRSA(await getPrivateKey(userId), keyEncrypted)
+          console.log(await getPrivateKey(userId), keyEncrypted);
+          console.log("Chave AES corrente: ", key)
+
+          if (version === currentVersion) {
+            console.log("Usando chave atual");
+            return key;
+          } else {
+            const keyActuallyRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`)
+            const snapshotKey = await get(keyActuallyRef);
+            const keyActually = snapshotKey.val();
+
+            console.log("Usando chave antiga");
+            const chatRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`);
+            const snapshot = await get(chatRef);
+            const encryptedOldKey = snapshot.val();
+
+            if (!encryptedOldKey) {
+              throw new Error("Chave antiga não encontrada.");
+            }
+
+            const oldKey = decryptRSA(await getPrivateKey(userId), keyActually);
+            console.log("Chave versionada:", oldKey);
+            return oldKey;
+          }
+        } catch (error) {
+          console.error("Erro ao buscar a chave versionada:", error);
+          throw error;
+        }
+      };
     // Função para excluir o chat
     const handleDeleteChat = async () => {
         if (!chatId) return;
@@ -230,7 +284,20 @@ const ChatBox = () => {
 
     const sendMessageToAPI = async (newMessage) => {
         const messagesRef = ref(database, `/chats/${newMessage.idChat}/messages/`);
-        newMessage.message = encryptAES(newMessage.message, await fetchDescrypted());
+        const aesKeyCripted = await getUserEncryptedKey(chatId, userId)
+
+        const privateKey = await getPrivateKey(userId)
+
+        const keyDecrypted = await decryptRSA(privateKey, aesKeyCripted)
+        const usedRef = ref(database, `sdk/${chatId}/key/used`)
+        const verifyUsed = await get(usedRef);
+        console.log(verifyUsed)
+        const verify = verifyUsed.val()
+        if(!verify){
+            await set(usedRef, true)
+        }
+
+        newMessage.message = encryptAES(newMessage.message, keyDecrypted);
         try {
             await push(messagesRef, newMessage);
             //console.log('Mensagem enviada com sucesso');
@@ -240,6 +307,10 @@ const ChatBox = () => {
     };
 
     const handleSendMessage = async () => {
+        //Obter versão da chave
+        const dataRef = ref(database, `sdk/${chatId}/key/version`)
+        const snapshot = await get(dataRef)
+        const keyVersion = snapshot.val();
         if (message.trim()) {
             const newMessage = {
                 idChat: chatId,
@@ -247,6 +318,7 @@ const ChatBox = () => {
                 message,
                 timestamp: new Date().toISOString(),
                 idUserRead: [userId],
+                keyVersion,
             };
 
             // Verifique se todos os campos estão preenchidos corretamente
@@ -351,6 +423,7 @@ const ChatBox = () => {
                             <Dropdown
                                 className='chatbox-dropdown'
                                 options={[
+                                    { label: 'Editar Conversa', route: `/${userId}/edit-chat/${chatId}` },
                                     { label: 'Excluir Conversa', action: handleDeleteChat },
                                     { label: 'Limpar Conversa', action: handleClearMessages }
                                 ]}

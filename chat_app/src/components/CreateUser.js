@@ -8,6 +8,7 @@ import "./styles/LoginAndRegister.css";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SendVerificationEmail } from '../services/SendVerificationEmail'; // Importa o componente de envio de email
+import { generateRSAKeyPair, savePrivateKeyToIndexedDB, savePublicKeyToFirebase } from '../services/crypto-utils';
 
 const CreateUser = () => {
     const [name, setName] = useState("");
@@ -63,10 +64,10 @@ const CreateUser = () => {
     };
 
     const handleVerification = () => {
-        setIsVerified(true); 
-        handleRegister(); 
+        setIsVerified(true);
+        handleRegister();
     };
-    
+
     useEffect(() => {
         if (user && isVerified) { // Apenas registra se a verificação foi concluída
             const body = {
@@ -78,24 +79,20 @@ const CreateUser = () => {
                 },
             };
             const rootRef = ref(database);
-    
+
             update(rootRef, body)
                 .then(() => {
                     console.log("Usuário salvo com sucesso!");
                     navigate("/"); // Redireciona para a rota principal após salvar
                 })
                 .catch(error => console.error("Erro ao salvar o usuário:", error));
-    
+
             const createUserKey = async () => {
                 try {
-                    const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/createKeyUser', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ idUser: user.user.uid }),
-                    });
-    
-                    if (!response.ok) throw new Error('Erro ao criar a chave do usuário');
-                    await response.json();
+                    const {publicKey, privateKey } = await generateRSAKeyPair(user.user.uid)
+                    console.log(publicKey, privateKey)
+                    await savePrivateKeyToIndexedDB(user.user.uid, privateKey);
+                    await savePublicKeyToFirebase(user.user.uid, publicKey)
                     registerSucess();
                 } catch (error) {
                     console.error("Erro ao criar a chave do usuário:", error);
@@ -104,7 +101,7 @@ const CreateUser = () => {
             createUserKey();
         }
     }, [user, name, email, pass, navigate, isVerified]);
-    
+
 
     return (
         <div className='square'>
