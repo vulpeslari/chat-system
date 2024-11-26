@@ -26,15 +26,19 @@ const CreateUser = () => {
     const handleContinue = (e) => {
         e.preventDefault();
 
+        // A senha deve conter: mínimo de 8 caracteres, pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
         if (name === "" || email === "" || pass === "") {
             registerError("Preencha todos os campos!");
-        } else if (pass.length < 6) {
-            registerError("A senha deve ter no mínimo 6 caracteres.");
+        } else if (!passwordRegex.test(pass)) {
+            registerError("A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.");
         } else {
             // Exibe o componente de verificação de e-mail
             setShowVerification(true);
         }
     };
+
 
     const handleRegister = async () => {
         const userRef = ref(database, `user/`);
@@ -89,7 +93,7 @@ const CreateUser = () => {
 
             const createUserKey = async () => {
                 try {
-                    const {publicKey, privateKey } = await generateRSAKeyPair(user.user.uid)
+                    const { publicKey, privateKey } = await generateRSAKeyPair(user.user.uid)
                     console.log(publicKey, privateKey)
                     await savePrivateKeyToIndexedDB(user.user.uid, privateKey);
                     await savePublicKeyToFirebase(user.user.uid, publicKey)

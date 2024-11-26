@@ -5,12 +5,10 @@ import { IoSend } from "react-icons/io5";
 import Message from "./Message";
 import Dropdown from "./Dropdown";
 import { LineWave } from 'react-loader-spinner';
-import { getDatabase } from 'firebase/database'
-import { initializeApp } from 'firebase/app';
 import { ref, set, onValue, update, get, push, remove } from "firebase/database";
 import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
-import { decryptRSA, getPrivateKey , getUserEncryptedKey} from '../services/crypto-utils';
+import { decryptRSA, getPrivateKey, getUserEncryptedKey } from '../services/crypto-utils';
 
 // Inicializar o Realtime Database
 const ChatBox = () => {
@@ -63,7 +61,6 @@ const ChatBox = () => {
                         );
 
                         const chatName = chatData.nomeGrupo || participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
-
 
                         setCurrentChat({
                             id: chatId,
@@ -139,43 +136,43 @@ const ChatBox = () => {
 
     const getVersionKey = async (version) => {
         try {
-          const dataRef = ref(database, `sdk/${chatId}/key/version`);
-          const snapshot = await get(dataRef);
-          const currentVersion = snapshot.val();
+            const dataRef = ref(database, `sdk/${chatId}/key/version`);
+            const snapshot = await get(dataRef);
+            const currentVersion = snapshot.val();
 
-          const keyRef = ref(database, `sdk/${chatId}/key/${userId}`)
-          const snapshotKey = await get(keyRef);
-          const keyEncrypted = snapshotKey.val();
-          const key = await decryptRSA(await getPrivateKey(userId), keyEncrypted)
-          console.log(await getPrivateKey(userId), keyEncrypted);
-          console.log("Chave AES corrente: ", key)
+            const keyRef = ref(database, `sdk/${chatId}/key/${userId}`)
+            const snapshotKey = await get(keyRef);
+            const keyEncrypted = snapshotKey.val();
+            const key = await decryptRSA(await getPrivateKey(userId), keyEncrypted)
+            console.log(await getPrivateKey(userId), keyEncrypted);
+            console.log("Chave AES corrente: ", key)
 
-          if (version === currentVersion) {
-            console.log("Usando chave atual");
-            return key;
-          } else {
-            const keyActuallyRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`)
-            const snapshotKey = await get(keyActuallyRef);
-            const keyActually = snapshotKey.val();
+            if (version === currentVersion) {
+                console.log("Usando chave atual");
+                return key;
+            } else {
+                const keyActuallyRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`)
+                const snapshotKey = await get(keyActuallyRef);
+                const keyActually = snapshotKey.val();
 
-            console.log("Usando chave antiga");
-            const chatRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`);
-            const snapshot = await get(chatRef);
-            const encryptedOldKey = snapshot.val();
+                console.log("Usando chave antiga");
+                const chatRef = ref(database, `sdk/${chatId}/versions/${version}/${userId}`);
+                const snapshot = await get(chatRef);
+                const encryptedOldKey = snapshot.val();
 
-            if (!encryptedOldKey) {
-              throw new Error("Chave antiga não encontrada.");
+                if (!encryptedOldKey) {
+                    throw new Error("Chave antiga não encontrada.");
+                }
+
+                const oldKey = decryptRSA(await getPrivateKey(userId), keyActually);
+                console.log("Chave versionada:", oldKey);
+                return oldKey;
             }
-
-            const oldKey = decryptRSA(await getPrivateKey(userId), keyActually);
-            console.log("Chave versionada:", oldKey);
-            return oldKey;
-          }
         } catch (error) {
-          console.error("Erro ao buscar a chave versionada:", error);
-          throw error;
+            console.error("Erro ao buscar a chave versionada:", error);
+            throw error;
         }
-      };
+    };
     // Função para excluir o chat
     const handleDeleteChat = async () => {
         if (!chatId) return;
@@ -226,7 +223,7 @@ const ChatBox = () => {
                     fetchUserStatus(userUid);
 
                 } else {
-                    console.log(`ID não encontrado para o usuário: ${username}`);
+                    // não me pergunte mas por algum motivo não funciona se tirar esse else 
                 }
             });
         }
@@ -259,7 +256,18 @@ const ChatBox = () => {
     };
 
     const getUsernamesFromIds = (chatUserIds) => {
+        if (!users || !userId) {
+            console.error('Erro: users ou userId não estão definidos.');
+            return 'Usuário desconhecido';
+        }
+
         const currentUser = users.find(u => u.id === userId);
+
+        if (!currentUser) {
+            console.error('Erro: Usuário atual não encontrado.');
+            return 'Usuário desconhecido';
+        }
+
         const usernames = chatUserIds.map(name => (name === currentUser.nome ? 'you' : `@${name}`));
 
         if (usernames.length > 1) {
@@ -268,6 +276,7 @@ const ChatBox = () => {
 
         return usernames[0] || 'Usuário desconhecido';
     };
+
 
     // MESSAGE HANDLERS
     const handleInputChange = (e) => {
@@ -293,7 +302,7 @@ const ChatBox = () => {
         const verifyUsed = await get(usedRef);
         console.log(verifyUsed)
         const verify = verifyUsed.val()
-        if(!verify){
+        if (!verify) {
             await set(usedRef, true)
         }
 
@@ -329,9 +338,34 @@ const ChatBox = () => {
                 console.warn("Alguns campos estão indefinidos:", newMessage);
             }
         }
-
-
     };
+
+    const handleLeaveGroup = async () => {
+        if (!chatId || !userId) return;
+    
+        try {
+            // Recuperar o chat atual
+            const chatRef = ref(database, `/chats/${chatId}`);
+            const chatSnapshot = await get(chatRef);
+            const chatData = chatSnapshot.val();
+    
+            if (chatData) {
+                // Remover o userId da lista de participantes
+                const updatedParticipants = chatData.idUsers.filter(id => id !== userId);
+    
+                // Atualizar o chat no banco de dados
+                await update(chatRef, { idUsers: updatedParticipants });
+    
+                console.log('Usuário removido do grupo com sucesso');
+    
+                // Redirecionar para a rota de edição do chat com a lista atualizada de participantes
+                navigate(`/${userId}`);
+            }
+        } catch (error) {
+            console.error('Erro ao remover o usuário do grupo:', error);
+        }
+    };
+    
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && e.ctrlKey) {
@@ -364,38 +398,37 @@ const ChatBox = () => {
         );
     };
 
-    const fetchDescrypted = async () => {
-        const chatRef = ref(database, `/chats/${chatId}/keys/${userId}`);
-        try {
-            const snapshot = await get(chatRef);
+    // const fetchDescrypted = async () => {
+    //     const chatRef = ref(database, `/chats/${chatId}/keys/${userId}`);
+    //     try {
+    //         const snapshot = await get(chatRef);
 
-            if (snapshot.exists()) {
-                const userKey = snapshot.val(); // Isso obterá o valor diretamente, como "n7DJL"
-                const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/descryptedKeyChat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ keyId: userId, ciphertext: userKey }), // Passando o ID do usuário
-                });
+    //         if (snapshot.exists()) {
+    //             const userKey = snapshot.val(); // Isso obterá o valor diretamente, como "n7DJL"
+    //             const response = await fetch('https://api-itjc4yhhoq-uc.a.run.app/descryptedKeyChat', {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                 },
+    //                 body: JSON.stringify({ keyId: userId, ciphertext: userKey }), // Passando o ID do usuário
+    //             });
 
-                if (!response.ok) {
-                    throw new Error('Erro ao obter a chave AES');
-                }
+    //             if (!response.ok) {
+    //                 throw new Error('Erro ao obter a chave AES');
+    //             }
 
-                const data = await response.json();
-                console.log("Chave AES descriptografada: ", data.plaintext);
-                return data.plaintext;
-            } else {
-                console.log("Nenhuma chave encontrada para o usuário especificado.");
-                return null;
-            }
-        } catch (error) {
-            console.error("Erro ao buscar chave do usuário:", error);
-            return null;
-        }
-
-    }
+    //             const data = await response.json();
+    //             console.log("Chave AES descriptografada: ", data.plaintext);
+    //             return data.plaintext;
+    //         } else {
+    //             console.log("Nenhuma chave encontrada para o usuário especificado.");
+    //             return null;
+    //         }
+    //     } catch (error) {
+    //         console.error("Erro ao buscar chave do usuário:", error);
+    //         return null;
+    //     }
+    // }
 
     // USADO PARA SEMPRE QUE UMA MENSAGEM FOR ENVIADA, LEVAR O SCROLL PARA BAIXO
     useEffect(() => {
@@ -427,7 +460,30 @@ const ChatBox = () => {
                                     { label: 'Excluir Conversa', action: handleDeleteChat },
                                     { label: 'Limpar Conversa', action: handleClearMessages }
                                 ]}
-                                onSelect={(option) => option.action()}
+                                onSelect={(option) => {
+                                    if (option.route) {
+                                        navigate(option.route); // Navega para a rota de edição
+                                    } else if (option.action) {
+                                        option.action(); // Executa a ação
+                                    }
+                                }}
+                            />
+                        )}
+
+                        {/* MAS OUTROS USUÁRIOS PODEM SAIR DO GRUPO */}
+                        {currentChat.ownerId != userId && (
+                            <Dropdown
+                                className='chatbox-dropdown'
+                                options={[
+                                    { label: 'Sair do Grupo', action: handleLeaveGroup },
+                                ]}
+                                onSelect={(option) => {
+                                    if (option.route) {
+                                        navigate(option.route); // Navega para a rota de edição
+                                    } else if (option.action) {
+                                        option.action(); // Executa a ação
+                                    }
+                                }}
                             />
                         )}
                     </div>

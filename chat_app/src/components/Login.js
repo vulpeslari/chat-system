@@ -8,7 +8,7 @@ import { AppContext } from '../AppContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SendVerificationEmail } from '../services/SendVerificationEmail';
-import { rotationChat , verifyExpiration} from '../services/rotationKeys';
+import { rotationChat, verifyExpiration } from '../services/rotationKeys';
 
 const Login = () => {
     const { setUserUid } = useContext(AppContext);
@@ -40,7 +40,12 @@ const Login = () => {
     };
 
     const handleVerificationSuccess = () => {
-        localStorage.setItem(user.user.uid, user.user.accessToken);
+        const tokenExpiration = Date.now() + 24 * 60 * 60 * 1000; // 1 dia em milissegundos
+        localStorage.setItem(user.user.uid, JSON.stringify({
+            token: user.user.accessToken,
+            expiration: tokenExpiration
+        }));
+
         const userRf = ref(database, `/user/${user.user.uid}`);
         const status = { status: "online" };
 

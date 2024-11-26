@@ -12,7 +12,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { decryptRSA, getPrivateKey, encryptRSA } from '../services/crypto-utils';
 
-const EXPIRED_TIME = 1*1*60*1000;
+const EXPIRED_TIME = 1 * 1 * 60 * 1000;
 
 // Componente para adicionar um novo chat
 const AddChat = () => {
@@ -55,6 +55,24 @@ const AddChat = () => {
         setIsGroupChat(selectedUsers.length > 1);
     }, [selectedUsers]);
 
+    // Efeito para buscar dados do chat caso já exista
+    useEffect(() => {
+        const fetchChatData = async () => {
+            if (chatId) { // Verifica se é um chat para edição
+                const chatRef = ref(database, `chats/${chatId}`);
+                const snapshot = await get(chatRef);
+                if (snapshot.exists()) {
+                    const chatData = snapshot.val();
+                    setNomeGrupo(chatData.nomeGrupo || ''); // Nome do grupo (caso exista)
+                    setSelectedUsers(chatData.idUsers.filter(id => id !== userId)); // Exclui o usuário atual
+                } else {
+                    console.log("Chat não encontrado");
+                }
+            }
+        };
+        fetchChatData();
+    }, [chatId, userId]);
+    
     // Efeito para buscar usuários do banco de dados Firebase
     useEffect(() => {
         const fetchUsers = async () => {
@@ -83,9 +101,8 @@ const AddChat = () => {
 
     // Filtra usuários com base na pesquisa e exclui o usuário atual
     const filteredUsers = users
-    .filter(user => user.id !== userId)
-    .filter(user => user.nome && user.nome.toLowerCase().includes(searchTerm.toLowerCase()));
-
+    .filter(user => user && user.id !== userId) // Exclui o usuário atual
+    .filter(user => user.nome && user.nome.toLowerCase().includes(searchTerm.toLowerCase())); // Garante que `nome` exista
 
     // Alterna a seleção de um usuário para o chat
     const handleUserSelect = (userId) => {
@@ -272,7 +289,7 @@ const AddChat = () => {
     return (
         <div className='pop-up'>
             <div className='top-bar'>
-            <h1>{chatId ? 'Editar conversa' : 'Nova conversa'}</h1>
+                <h1>{chatId ? 'Editar conversa' : 'Nova conversa'}</h1>
                 <Link to={`/${userId}`}>
                     <IoCloseSharp className='menu-icon' />
                 </Link>
@@ -330,7 +347,7 @@ const AddChat = () => {
             </div>
             <div className='footer'>
                 <button className='button' onClick={handleSubmit}>
-                    {chatId ? 'Salvar alterações' : 'Criar chat '}
+                    {chatId ? 'Salvar alterações' : 'Criar chat'}
                 </button>
             </div>
             <ToastContainer />
