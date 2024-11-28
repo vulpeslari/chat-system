@@ -21,7 +21,7 @@ export const SendVerificationEmail = ({ email, onVerification }) => {
         };
 
         emailjs
-            .send('service_x96pjvw', 'template_tsuoxto', emailParams, 'VxpIynCC3_LfavJuD')
+            .send('service_jcrcmfp', 'template_jkywp59', emailParams, 'MKAOhTqo2eR_rfPbf')
             .then(() => {
                 toast.success('Um código de verificação foi enviado para ' + email + '.', { theme: 'dark' });
                 setTimeLeft(5 * 60); // Reseta o tempo para 5 minutos
@@ -34,11 +34,12 @@ export const SendVerificationEmail = ({ email, onVerification }) => {
     };
 
     const verifyCode = () => {
+        //onVerification()
         if (timeLeft <= 0) {
             toast.error('O código expirou. Solicite um novo código.', { theme: 'dark' });
         } else if (inputCode === verificationCode) {
             toast.success('Código verificado com sucesso!', { theme: 'dark' });
-            onVerification(); // Notifica o componente pai que a verificação foi concluída
+            onVerification(); 
         } else {
             toast.error('Código inválido. Tente novamente.', { theme: 'dark' });
         }

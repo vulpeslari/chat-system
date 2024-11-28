@@ -10,6 +10,8 @@ import { database } from "../services/firebaseConfig";
 import { decryptAES, encryptAES } from '../services/cryptograph';
 import { decryptRSA, getPrivateKey, getUserEncryptedKey } from '../services/crypto-utils';
 
+import DOMPurify from 'dompurify';
+
 // Inicializar o Realtime Database
 const ChatBox = () => {
     const [message, setMessage] = useState("");
@@ -233,7 +235,6 @@ const ChatBox = () => {
         }
     }, [currentChat, users]);
 
-    // GET USERNAMES FROM IDS
     // Função para marcar a mensagem como lida
     const markMessageAsRead = async (messageId) => {
         const messageRef = ref(database, `/chats/${chatId}/messages/${messageId}`);
@@ -325,15 +326,18 @@ const ChatBox = () => {
         const snapshot = await get(dataRef)
         const keyVersion = snapshot.val();
         if (message.trim()) {
+            // Sanitiza a mensagem antes de enviá-la
+            const sanitizedMessage = DOMPurify.sanitize(message.trim());
+    
             const newMessage = {
                 idChat: chatId,
                 idUser: userId,
-                message,
+                message: sanitizedMessage,  // Mensagem sanitizada
                 timestamp: new Date().toISOString(),
                 idUserRead: [userId],
                 keyVersion,
             };
-
+    
             // Verifique se todos os campos estão preenchidos corretamente
             if (newMessage.idChat && newMessage.idUser && newMessage.message && newMessage.timestamp) {
                 await sendMessageToAPI(newMessage);
@@ -342,7 +346,7 @@ const ChatBox = () => {
                 console.warn("Alguns campos estão indefinidos:", newMessage);
             }
         }
-    };
+    };    
 
     const handleLeaveGroup = async () => {
         if (!chatId || !userId) return;

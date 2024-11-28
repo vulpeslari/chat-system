@@ -12,6 +12,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { decryptRSA, getPrivateKey, encryptRSA, getPulicKey } from '../services/crypto-utils';
 
+import DOMPurify from 'dompurify'; 
+
 const EXPIRED_TIME = 1 * 1 * 60 * 1000;
 
 // Componente para adicionar um novo chat
@@ -101,8 +103,8 @@ const AddChat = () => {
 
     // Filtra usuários com base na pesquisa e exclui o usuário atual
     const filteredUsers = users
-    .filter(user => user && user.id !== userId) // Exclui o usuário atual
-    .filter(user => user.nome && user.nome.toLowerCase().includes(searchTerm.toLowerCase())); // Garante que `nome` exista
+        .filter(user => user && user.id !== userId) // Exclui o usuário atual
+        .filter(user => user.nome && user.nome.toLowerCase().includes(searchTerm.toLowerCase())); // Garante que `nome` exista
 
     // Alterna a seleção de um usuário para o chat
     const handleUserSelect = (userId) => {
@@ -142,89 +144,93 @@ const AddChat = () => {
         }
     };
 
-    const handleSubmit = async () => {
-        if (isGroupChat && nomeGrupo.trim() === '') {
-            chatError('Dê um nome para o grupo!');
-            return;
+// Função para sanitizar strings
+const sanitizeInput = (input) => {
+    return DOMPurify.sanitize(input.trim());
+};
+
+const handleSubmit = async () => {
+    const sanitizedNomeGrupo = sanitizeInput(nomeGrupo);
+    if (isGroupChat && sanitizedNomeGrupo === '') {
+        chatError('Dê um nome para o grupo!');
+        return;
+    }
+
+    const sanitizedUsers = selectedUsers.map(user => sanitizeInput(user));
+    const payload = isGroupChat
+        ? { nomeGrupo: sanitizedNomeGrupo, idUsers: [sanitizeInput(userId), ...sanitizedUsers] }
+        : { idUsers: [sanitizeInput(userId), sanitizeInput(selectedUsers[0])] };
+
+    try {
+        // Verifica se o chat entre dois usuários já existe (não é um grupo)
+        if (!isGroupChat && sanitizedUsers.length === 1) {
+            const existingChat = await checkExistingChat([sanitizeInput(userId), sanitizeInput(selectedUsers[0])]);
+            if (existingChat) {
+                chatError('Já existe um chat entre esses usuários.');
+                return;
+            }
         }
 
-        const payload = isGroupChat
-            ? { nomeGrupo, idUsers: [userId, ...selectedUsers] }
-            : { idUsers: [userId, selectedUsers[0]] };
-
-        try {
-            // Verifica se o chat entre dois usuários já existe (não é um grupo)
-            if (!isGroupChat && selectedUsers.length === 1) {
-                const existingChat = await checkExistingChat([userId, selectedUsers[0]]);
-                if (existingChat) {
-                    chatError('Já existe um chat entre esses usuários.');
-                    return;
-                }
+        const chatRef = ref(database, "chats/");
+        // Verifica se já existe um chat de grupo com o mesmo nome e usuários
+        if (isGroupChat) {
+            const existingGroupChat = await checkExistingGroupChat(sanitizedNomeGrupo, [sanitizeInput(userId), ...sanitizedUsers]);
+            if (existingGroupChat) {
+                chatError('Já existe um chat de grupo com essas pessoas e o mesmo nome.');
+                return;
             }
+        }
 
-            const chatRef = ref(database, "chats/");
-            // Verifica se já existe um chat de grupo com o mesmo nome e usuários
-            if (isGroupChat) {
-                const existingGroupChat = await checkExistingGroupChat(nomeGrupo, payload.idUsers);
-                if (existingGroupChat) {
-                    chatError('Já existe um chat de grupo com essas pessoas e o mesmo nome.');
-                    return;
-                }
-            }
+        // Se for um chat existente, atualiza-o; caso contrário, cria um novo
+        if (chatId) {
+            await update(ref(database, `chats/${chatId}`), payload);
+            await updateChatKeys(chatId, payload.idUsers)
+            console.log('Chat atualizado:', payload);
+        } else {
+            const newChatRef = await push(chatRef, payload);
+            console.log('ID do novo chat:', newChatRef.key);
 
-            // Se for um chat existente, atualiza-o; caso contrário, cria um novo
-            if (chatId) {
-                await update(ref(database, `chats/${chatId}`), payload);
-                await updateChatKeys(chatId,payload.idUsers)
-                console.log('Chat atualizado:', payload);
-            } else {
-                const newChatRef = await push(chatRef, payload);
-                console.log('ID do novo chat:', newChatRef.key);
+            // Gera a chave AES e define a referência para o SDK
+            const chatId = newChatRef.key;
+            const keyAES = generateAES();
+            const keyRef = ref(database, `sdk/${chatId}/key`);
+            console.log("chave aes gerada para o chat:", keyAES);
 
-                // Gera a chave AES e define a referência para o SDK
-                const chatId = newChatRef.key;
-                const keyAES = generateAES();
-                const keyRef = ref(database, `sdk/${chatId}/key`);
-                console.log("chave aes gerada para o chat:", keyAES)
+            // Criptografa e salva as chaves
+            const encryptedKeys = {
+                version: 1,
+                expirationTimestamp: Date.now() + EXPIRED_TIME,
+                used: false,
+            };
 
-                // Objeto para armazenar as chaves criptografadas
-                const encryptedKeys = {
-                    version: 1,
-                    expirationTimestamp: Date.now() + EXPIRED_TIME, // Expiration time em milissegundos
-                    used: false,
-                };
+            for (const idUser of payload.idUsers) {
+                try {
+                    const chatKeyRef = ref(database, `user/${idUser}/public_key`);
+                    const snapshot = await get(chatKeyRef);
 
-                // Itera sobre os usuários para criptografar e armazenar as chaves
-                for (const idUser of payload.idUsers) {
-                    try {
-                        const chatKeyRef = ref(database, `user/${idUser}/public_key`);
-                        const snapshot = await get(chatKeyRef);
-
-                        if (snapshot.exists()) {
-                            const publicKey = snapshot.val();
-                            const encryptedKey = await encryptRSA(publicKey, keyAES);
-
-                            encryptedKeys[idUser] = encryptedKey; // Armazena a chave com o ID do usuário
-                        } else {
-                            console.warn(`Chave pública não encontrada para o usuário: ${idUser}`);
-                        }
-                    } catch (error) {
-                        console.error(`Erro ao processar a chave pública do usuário ${idUser}:`, error);
+                    if (snapshot.exists()) {
+                        const publicKey = snapshot.val();
+                        const encryptedKey = await encryptRSA(publicKey, keyAES);
+                        encryptedKeys[idUser] = encryptedKey;
+                    } else {
+                        console.warn(`Chave pública não encontrada para o usuário: ${idUser}`);
                     }
+                } catch (error) {
+                    console.error(`Erro ao processar a chave pública do usuário ${idUser}:`, error);
                 }
-                console.log(encryptedKeys)
-
-                // Salva a estrutura no banco de dados
-                await set(keyRef, encryptedKeys);
             }
+            console.log(encryptedKeys);
 
-            navigate(`/${userId}`);
-        } catch (error) {
-            console.error('Erro ao criar/atualizar chat:', error);
+            await set(keyRef, encryptedKeys);
         }
-    };
 
-    const updateChatKeys = async(chatId, idUsers) =>{
+        navigate(`/${sanitizeInput(userId)}`);
+    } catch (error) {
+        console.error('Erro ao criar/atualizar chat:', error);
+    }
+};
+
+    const updateChatKeys = async (chatId, idUsers) => {
         console.log(idUsers)
         const dataRef = ref(database, `sdk/${chatId}/key/`)
         const snapshot = await get(dataRef);
@@ -234,16 +240,16 @@ const AddChat = () => {
         const dataVersionsRef = ref(database, `sdk/${chatId}/versions`)
         const snapshotVersions = await get(dataVersionsRef)
         const versions = snapshotVersions.val()
-       if(versions){
-            for( const version of Object.keys(versions)){
+        if (versions) {
+            for (const version of Object.keys(versions)) {
 
                 const versionKeyRef = ref(database, `sdk/${chatId}/versions/${version}`)
                 const snapshotV = await get(versionKeyRef)
                 const versionKey = snapshotV.val()
                 const keyVersion = {}
 
-                for(const idUser of Object.keys(versionKey)){
-                    if(idUser !== "expirationTimestamp" && idUser !== "version" && idUser != "used" && idUsers.includes(idUser)){
+                for (const idUser of Object.keys(versionKey)) {
+                    if (idUser !== "expirationTimestamp" && idUser !== "version" && idUser != "used" && idUsers.includes(idUser)) {
                         keyVersion[idUser] = versionKey[idUser]
                     }
                 }
@@ -251,9 +257,9 @@ const AddChat = () => {
                 await set(versionKeyRef, keyVersion)
 
             }
-       }
+        }
 
-        if(key.used){
+        if (key.used) {
             const versionSaveKey = ref(database, `sdk/${chatId}/versions/${version}/`)
             // Objeto para armazenar as chaves criptografadas
             const encryptedKeys = {};
@@ -273,7 +279,7 @@ const AddChat = () => {
             used: false,
         };
 
-        for(const id of idUsers){
+        for (const id of idUsers) {
             const publickey = await getPulicKey(id)
             encryptedKeys[id] = await encryptRSA(publickey, newKey)
         }

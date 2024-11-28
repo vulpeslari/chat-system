@@ -8,6 +8,8 @@ import { LineWave } from 'react-loader-spinner';
 import { ref, set, onValue, update, get } from "firebase/database";
 import { database } from '../services/firebaseConfig';
 
+import DOMPurify from 'dompurify';
+
 const ChatMenu = () => {
     const { userId } = useParams();
     const location = useLocation();
@@ -15,6 +17,11 @@ const ChatMenu = () => {
     const [chats, setChats] = useState([]);
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Função para sanitizar os inputs
+    const sanitizeInput = (input) => {
+        return DOMPurify.sanitize(input);
+    };
 
     // Função para buscar usuários e conversas
     const fetchUsersAndChats = async () => {
@@ -180,14 +187,12 @@ const ChatMenu = () => {
     // Função para mapear IDs para nomes de usuários
     const getUserNamesFromIds = (idParticipants) => {
         return idParticipants.map(name => {
-            // Converta `users` para um array, se necessário
             const usersArray = Array.isArray(users) ? users : Object.values(users);
-            // Encontre o usuário atual
             const currentUser = usersArray.find(u => u.id === userId);
             if (currentUser && currentUser.nome === name) return 'you';
 
             const user = usersArray.find(u => u.nome === name);
-            return user ? user.nome : "Usuário desconhecido";
+            return user ? sanitizeInput(user.nome) : "Usuário desconhecido"; // Sanitizando nome
         });
     };
 
@@ -207,14 +212,13 @@ const ChatMenu = () => {
             return user ? user.id : null;
         }).filter(Boolean);
 
-
         if (ids.length === 2) {
             const otherUserId = ids.find(id => id !== userId);
             const otherUser = users.find(u => u.id === otherUserId);
-            return otherUser ? `@${otherUser.nome}` : "Usuário desconhecido";
+            return otherUser ? `@${sanitizeInput(otherUser.nome)}` : "Usuário desconhecido"; // Sanitizando nome
         }
 
-        return chat.nome || "Usuário desconhecido";
+        return sanitizeInput(chat.nome || "Usuário desconhecido"); // Sanitizando nome
     };
 
     // Filtro de conversas baseado no termo de busca
@@ -223,7 +227,10 @@ const ChatMenu = () => {
             const user = users.find(u => u.nome === name);
             return user ? user.nome.toLowerCase() : '';
         });
-        return usernamesInChat.some(nome => nome.includes(searchTerm.toLowerCase()));
+
+        const sanitizedName = DOMPurify.sanitize(searchTerm);
+
+        return usernamesInChat.some(nome => nome.includes(sanitizedName.toLowerCase()));
     });
 
     return (
@@ -261,9 +268,9 @@ const ChatMenu = () => {
                     filteredChats.map(chat => (
                         <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
                             <Chat chatName={getGroupName(chat)}
-                            chatUsers={formatUsernames(chat.idParticipants)}
-                            status={chat.messagesNotRead > 0 ? true : false}
-                            number={chat.messagesNotRead}/>
+                                chatUsers={formatUsernames(chat.idParticipants)}
+                                status={chat.messagesNotRead > 0 ? true : false}
+                                number={chat.messagesNotRead} />
                         </Link>
                     ))
                 )}

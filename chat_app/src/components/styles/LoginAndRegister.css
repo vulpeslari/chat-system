@@ -58,6 +58,7 @@
 .toRegister {
     text-align: center;
     font-size: 14px;
+    margin-top: -18px;
 }
 
 .password {
@@ -90,4 +91,12 @@
 
 .verify .button {
     transform: translateX(85%);
+}
+
+.recaptcha-container {
+    transform: scale(0.7); 
+    width: 304px; 
+    height: 20px; 
+    margin-left: 80px;
+    margin-top: 30px;
 }

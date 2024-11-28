@@ -9,6 +9,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SendVerificationEmail } from '../services/SendVerificationEmail'; // Importa o componente de envio de email
 import { generateRSAKeyPair, savePrivateKeyToIndexedDB, savePublicKeyToFirebase } from '../services/crypto-utils';
+import DOMPurify from 'dompurify'; // Importa o DOMPurify
 
 const CreateUser = () => {
     const [name, setName] = useState("");
@@ -29,9 +30,14 @@ const CreateUser = () => {
         // A senha deve conter: mínimo de 8 caracteres, pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-        if (name === "" || email === "" || pass === "") {
+        // Sanitiza os inputs antes de usá-los
+        const sanitizedName = DOMPurify.sanitize(name);
+        const sanitizedEmail = DOMPurify.sanitize(email);
+        const sanitizedPass = DOMPurify.sanitize(pass);
+
+        if (sanitizedName === "" || sanitizedEmail === "" || sanitizedPass === "") {
             registerError("Preencha todos os campos!");
-        } else if (!passwordRegex.test(pass)) {
+        } else if (!passwordRegex.test(sanitizedPass)) {
             registerError("A senha deve ter pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e caracteres especiais.");
         } else {
             // Exibe o componente de verificação de e-mail
@@ -39,9 +45,9 @@ const CreateUser = () => {
         }
     };
 
-
     const handleRegister = async () => {
         const userRef = ref(database, `user/`);
+        
         get(userRef)
             .then(snapshot => {
                 let userExists = false;
@@ -59,6 +65,7 @@ const CreateUser = () => {
                     registerError(`O e-mail "${email}" já está cadastrado!`);
                 } else {
                     createUserWithEmailAndPassword(email, pass);
+                    localStorage.setItem('userSession', email);
                 }
             })
             .catch(error => {
@@ -105,7 +112,6 @@ const CreateUser = () => {
             createUserKey();
         }
     }, [user, name, email, pass, navigate, isVerified]);
-
 
     return (
         <div className='square'>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useSignInWithEmailAndPassword } from "react-firebase-hooks/auth";
 import { auth } from "../services/firebaseConfig";
 import { useNavigate } from "react-router-dom";
+import DOMPurify from 'dompurify'; // Importa DOMPurify
 import "./styles/LoginAndRegister.css";
 import { database, ref, update } from '../services/firebaseConfig';
 import { AppContext } from '../AppContext';
@@ -9,22 +10,25 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { SendVerificationEmail } from '../services/SendVerificationEmail';
 import { rotationChat, verifyExpiration } from '../services/rotationKeys';
+import ReCAPTCHA from "react-google-recaptcha";
 
 const Login = () => {
     const { setUserUid } = useContext(AppContext);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [awaitingVerification, setAwaitingVerification] = useState(false); // Controla se está aguardando a verificação do código
+    const [awaitingVerification, setAwaitingVerification] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState("");
     const navigate = useNavigate();
 
     const [signInWithEmailAndPassword, user, loading, error] = useSignInWithEmailAndPassword(auth);
 
     const loginError = (message) => toast.error(message, { theme: "dark", autoClose: 2000 });
+    const loginAlert = (message) => toast.error(message, { theme: "dark", autoClose: 2000 });
 
     useEffect(() => {
         if (user) {
-            setAwaitingVerification(true); // Troca para etapa de verificação
+            setAwaitingVerification(true);
         }
     }, [user]);
 
@@ -34,9 +38,28 @@ const Login = () => {
         }
     }, [error]);
 
+    // Função para sanitizar entradas
+    const sanitizeInput = (input) => DOMPurify.sanitize(input);
+
     const handleSignIn = (e) => {
         e.preventDefault();
-        signInWithEmailAndPassword(email, password);
+        if (!recaptchaToken) {
+            loginAlert("Por favor, complete o reCAPTCHA.");
+            return;
+        }
+
+        const userSession = localStorage.getItem('userSession');
+        if (!userSession) {
+            loginAlert('Por favor, faça o cadastro antes de fazer login.');
+        } else if (userSession !== email) {
+            loginAlert('O usuário não fez o cadastro no mesmo navegador.');
+        } else {
+            // Sanitiza os valores antes de usá-los
+            const sanitizedEmail = sanitizeInput(email);
+            const sanitizedPassword = sanitizeInput(password);
+
+            signInWithEmailAndPassword(sanitizedEmail, sanitizedPassword);
+        }
     };
 
     const handleVerificationSuccess = () => {
@@ -49,12 +72,11 @@ const Login = () => {
         const userRf = ref(database, `/user/${user.user.uid}`);
         const status = { status: "online" };
 
-
-        rotationChat(user.user.uid)
+        rotationChat(user.user.uid);
         update(userRf, status)
             .then(() => {
                 setUserUid(user.user.uid);
-                console.log("User UID:", user?.user?.uid);
+                //console.log("User UID:", user?.user?.uid);
                 navigate(`/${user.user.uid}`);
             })
             .catch((error) => {
@@ -76,7 +98,7 @@ const Login = () => {
                             <input
                                 type='email'
                                 className="nome"
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setEmail(sanitizeInput(e.target.value))} // Sanitiza em tempo real
                                 required
                             />
                         </div>
@@ -85,7 +107,7 @@ const Login = () => {
                             <input
                                 type={showPassword ? 'text' : 'password'}
                                 className="pass"
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e) => setPassword(sanitizeInput(e.target.value))} // Sanitiza em tempo real
                                 required
                             />
                             <button
@@ -95,6 +117,13 @@ const Login = () => {
                             >
                                 {showPassword ? "Ocultar senha" : "Mostrar senha"}
                             </button>
+                        </div>
+                        <div className="recaptcha-container">
+                            <ReCAPTCHA
+                                sitekey="6LcmzYwqAAAAAPfqBx_RF52DSlcEtrxo5XA9OwwF"
+                                onChange={(token) => setRecaptchaToken(token)}
+                                onExpired={() => setRecaptchaToken("")}
+                            />
                         </div>
                         <input type="submit" className="submit" value={"Entrar"} />
                         <div className="toRegister">
