@@ -34,7 +34,6 @@ export const SendVerificationEmail = ({ email, onVerification }) => {
     };
 
     const verifyCode = () => {
-        onVerification()
         if (timeLeft <= 0) {
             toast.error('O código expirou. Solicite um novo código.', { theme: 'dark' });
         } else if (inputCode === verificationCode) {

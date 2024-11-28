@@ -10,7 +10,7 @@ import { database } from '../services/firebaseConfig';
 import { generateAES, encryptAES, decryptAES } from '../services/cryptograph';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { decryptRSA, getPrivateKey, encryptRSA } from '../services/crypto-utils';
+import { decryptRSA, getPrivateKey, encryptRSA, getPulicKey } from '../services/crypto-utils';
 
 const EXPIRED_TIME = 1 * 1 * 60 * 1000;
 
@@ -72,7 +72,7 @@ const AddChat = () => {
         };
         fetchChatData();
     }, [chatId, userId]);
-    
+
     // Efeito para buscar usuários do banco de dados Firebase
     useEffect(() => {
         const fetchUsers = async () => {
@@ -134,6 +134,7 @@ const AddChat = () => {
 
         try {
             await remove(ref(database, `chats/${chatId}/`))
+            await remove(ref(database, `sdk/${chatId}/`))
             console.log('Chat excluído com sucesso');
             navigate(`/${userId}`);
         } catch (error) {
@@ -174,7 +175,7 @@ const AddChat = () => {
             // Se for um chat existente, atualiza-o; caso contrário, cria um novo
             if (chatId) {
                 await update(ref(database, `chats/${chatId}`), payload);
-                await remove(ref(database, `chats/${chatId}/messages`));
+                await updateChatKeys(chatId,payload.idUsers)
                 console.log('Chat atualizado:', payload);
             } else {
                 const newChatRef = await push(chatRef, payload);
@@ -223,6 +224,63 @@ const AddChat = () => {
         }
     };
 
+    const updateChatKeys = async(chatId, idUsers) =>{
+        console.log(idUsers)
+        const dataRef = ref(database, `sdk/${chatId}/key/`)
+        const snapshot = await get(dataRef);
+        const key = snapshot.val()
+        const version = key.version
+
+        const dataVersionsRef = ref(database, `sdk/${chatId}/versions`)
+        const snapshotVersions = await get(dataVersionsRef)
+        const versions = snapshotVersions.val()
+       if(versions){
+            for( const version of Object.keys(versions)){
+
+                const versionKeyRef = ref(database, `sdk/${chatId}/versions/${version}`)
+                const snapshotV = await get(versionKeyRef)
+                const versionKey = snapshotV.val()
+                const keyVersion = {}
+
+                for(const idUser of Object.keys(versionKey)){
+                    if(idUser !== "expirationTimestamp" && idUser !== "version" && idUser != "used" && idUsers.includes(idUser)){
+                        keyVersion[idUser] = versionKey[idUser]
+                    }
+                }
+
+                await set(versionKeyRef, keyVersion)
+
+            }
+       }
+
+        if(key.used){
+            const versionSaveKey = ref(database, `sdk/${chatId}/versions/${version}/`)
+            // Objeto para armazenar as chaves criptografadas
+            const encryptedKeys = {};
+            console.log(key)
+            for (const idUser of Object.keys(key)) {
+                if (idUser !== "expirationTimestamp" && idUser !== "version" && idUser !== "used" && idUsers.includes(idUser)) {
+                    encryptedKeys[idUser] = key[idUser];
+                }
+            }
+
+            await set(versionSaveKey, encryptedKeys)
+        }
+
+        const newKey = generateAES();
+        const encryptedKeys = {
+            version: version + 1,
+            used: false,
+        };
+
+        for(const id of idUsers){
+            const publickey = await getPulicKey(id)
+            encryptedKeys[id] = await encryptRSA(publickey, newKey)
+        }
+
+        await set(dataRef, encryptedKeys)
+
+    }
 
     // Verifica se já existe um chat entre dois usuários
     const checkExistingChat = async (userIds) => {

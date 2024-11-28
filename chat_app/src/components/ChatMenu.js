@@ -38,51 +38,124 @@ const ChatMenu = () => {
             onValue(dataRefChat, async (snapshot) => {
                 const chatsData = snapshot.val();
                 if (chatsData) {
-                    const chats = await Promise.all(Object.keys(chatsData).map(async (chatId) => {
-                        const chat = chatsData[chatId];
+                    const chats = await Promise.all(
+                        Object.keys(chatsData).map(async (chatId) => {
+                            const chat = chatsData[chatId];
 
-                        // Verifica se o userId está na lista de idUsers do chat
-                        if (chat.idUsers.includes(userId)) {
-                            // Buscar nomes dos usuários em idUsers
-                            const participantNames = await Promise.all(chat.idUsers.map(async (participantId) => {
-                                const userRef = ref(database, `/user/${participantId}`);
-                                const userSnapshot = await get(userRef);
-                                const userData = userSnapshot.val();
-                                return userData ? userData.nome : 'Usuário desconhecido';
-                            }));
+                            // Verifica se o userId está na lista de idUsers do chat
+                            if (chat.idUsers.includes(userId)) {
+                                // Buscar nomes dos usuários em idUsers
+                                const participantNames = await Promise.all(
+                                    chat.idUsers.map(async (participantId) => {
+                                        const userRef = ref(database, `/user/${participantId}`);
+                                        const userSnapshot = await get(userRef);
+                                        const userData = userSnapshot.val();
+                                        return userData ? userData.nome : "Usuário desconhecido";
+                                    })
+                                );
 
-                            // Determina o nome do chat
-                            const chatName = chat.nomeGrupo
-                                ? chat.nomeGrupo
-                                : participantNames.find(name => name !== users.find(user => user.id === userId)?.nome);
+                                // Determina o nome do chat
+                                const chatName = chat.nomeGrupo
+                                    ? chat.nomeGrupo
+                                    : participantNames.find(
+                                        (name) => name !== users.find((user) => user.id === userId)?.nome
+                                    );
 
+                                // Referência ao nó de mensagens
                                 const dataRefMessages = ref(database, `/chats/${chatId}/messages`);
                                 let mensagensSemUsuario = 0;
-                                onValue(dataRefMessages, (snapshot) => {
-                                    const messagesData = snapshot.val();
-                                    if (messagesData) {
-                                        Object.keys(messagesData).forEach((messageId) => {
-                                            const mensagem = messagesData[messageId];
 
-                                            // Verifica se o `userId` não está no array `ids`
-                                            if (!mensagem.idUserRead.includes(userId)) {
-                                                mensagensSemUsuario++;
+                                // Obtenha mensagens não lidas associadas ao chatId atual
+                                const messagesSnapshot = await get(dataRefMessages);
+                                const messagesData = messagesSnapshot.val();
+
+                                if (messagesData) {
+                                    for (const messageId of Object.keys(messagesData)) {
+                                        const mensagem = messagesData[messageId];
+                                        let messageIsToUser = true; // Presume-se que a mensagem seja para o usuário até que se prove o contrário.
+
+                                        console.log("Mensagem:", mensagem);
+
+                                        // Obtenha a chave principal
+                                        const dataRef = ref(database, `sdk/${chatId}/key`);
+                                        const snapshot = await get(dataRef);
+
+                                        if (snapshot.exists()) {
+                                            const key = snapshot.val();
+                                            console.log(
+                                                "Key da mensagem:",
+                                                mensagem.keyVersion,
+                                                "Key principal:",
+                                                key.version
+                                            );
+
+                                            if (mensagem.keyVersion !== key.version) {
+                                                // Se a versão da mensagem não for igual à versão da chave principal, busque a versão correspondente.
+                                                const versionRef = ref(
+                                                    database,
+                                                    `sdk/${chatId}/versions/${mensagem.keyVersion}`
+                                                );
+                                                const versionSnapshot = await get(versionRef);
+
+                                                if (versionSnapshot.exists()) {
+                                                    const keyVersion = versionSnapshot.val();
+                                                    // console.log("KeyVersion:", keyVersion);
+
+                                                    // Verifica se o `userId` está relacionado a essa chave
+                                                    messageIsToUser = Object.keys(keyVersion).some(
+                                                        (idUser) =>
+                                                            idUser !== "expirationTimestamp" &&
+                                                            idUser !== "version" &&
+                                                            idUser !== "used" &&
+                                                            idUser === userId
+                                                    );
+                                                    console.log(keyVersion)
+                                                    console.log(
+                                                        "messageIsToUser após checagem:",
+                                                        messageIsToUser
+                                                    );
+                                                } else {
+                                                    console.warn(
+                                                        `Versão da chave não encontrada: ${mensagem.keyVersion}`
+                                                    );
+                                                }
+                                            } else {
+                                                console.log(
+                                                    "Versão da chave é igual, mensagem marcada como não para o usuário."
+                                                );
+                                                messageIsToUser = true;
                                             }
-                                        });
+                                        } else {
+                                            console.warn(`Chave não encontrada para chatId: ${chatId}`);
+                                        }
 
-                                        //console.log(`Quantidade de mensagens do chat ${chatId} sem o usuário ${userId}:`, mensagensSemUsuario);
+
+                                        // Sempre avalia a inclusão do `userId` na mensagem
+                                        if (
+                                            !mensagem.idUserRead.includes(userId) &&
+                                            messageIsToUser
+                                        ) {
+                                            mensagensSemUsuario++;
+                                            console.log(
+                                                `Mensagens não lidas no chat ${chatId}:`,
+                                                mensagensSemUsuario
+                                            );
+                                        }
+                                        console.log(chatId, mensagensSemUsuario)
                                     }
-                                });
-                            // Estrutura do objeto de retorno
-                            return {
-                                id: chatId,
-                                nome: chatName,
-                                idParticipants: participantNames ,// Nomes dos participantes
-                                messagesNotRead: mensagensSemUsuario,
-                            };
-                        }
-                        return null; // Retorna null se o userId não estiver no chat
-                    }));
+                                }
+
+                                // Estrutura do objeto de retorno
+                                return {
+                                    id: chatId,
+                                    nome: chatName,
+                                    idParticipants: participantNames, // Nomes dos participantes
+                                    messagesNotRead: mensagensSemUsuario,
+                                };
+                            }
+                            return null; // Retorna null se o userId não estiver no chat
+                        })
+                    );
 
                     // Filtrar chats nulos (ou seja, chats que não têm o userId)
                     const filteredData = chats.filter(chat => chat != null);
@@ -187,9 +260,9 @@ const ChatMenu = () => {
                 ) : (
                     filteredChats.map(chat => (
                         <Link key={chat.id} to={`/${userId}/chat/${chat.id}`}>
-                            <Chat chatName={getGroupName(chat)} 
-                            chatUsers={formatUsernames(chat.idParticipants)} 
-                            status={chat.messagesNotRead > 0 ? true : false} 
+                            <Chat chatName={getGroupName(chat)}
+                            chatUsers={formatUsernames(chat.idParticipants)}
+                            status={chat.messagesNotRead > 0 ? true : false}
                             number={chat.messagesNotRead}/>
                         </Link>
                     ))

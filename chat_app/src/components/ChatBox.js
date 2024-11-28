@@ -161,12 +161,16 @@ const ChatBox = () => {
                 const encryptedOldKey = snapshot.val();
 
                 if (!encryptedOldKey) {
+                    console.log("O usuário não tem acessoa a essa mensagem")
                     throw new Error("Chave antiga não encontrada.");
+                    return null;
+                }
+                else{
+                    const oldKey = decryptRSA(await getPrivateKey(userId), keyActually);
+                    console.log("Chave versionada:", oldKey);
+                    return oldKey;
                 }
 
-                const oldKey = decryptRSA(await getPrivateKey(userId), keyActually);
-                console.log("Chave versionada:", oldKey);
-                return oldKey;
             }
         } catch (error) {
             console.error("Erro ao buscar a chave versionada:", error);
@@ -223,7 +227,7 @@ const ChatBox = () => {
                     fetchUserStatus(userUid);
 
                 } else {
-                    // não me pergunte mas por algum motivo não funciona se tirar esse else 
+                    // não me pergunte mas por algum motivo não funciona se tirar esse else
                 }
             });
         }
@@ -342,22 +346,22 @@ const ChatBox = () => {
 
     const handleLeaveGroup = async () => {
         if (!chatId || !userId) return;
-    
+
         try {
             // Recuperar o chat atual
             const chatRef = ref(database, `/chats/${chatId}`);
             const chatSnapshot = await get(chatRef);
             const chatData = chatSnapshot.val();
-    
+
             if (chatData) {
                 // Remover o userId da lista de participantes
                 const updatedParticipants = chatData.idUsers.filter(id => id !== userId);
-    
+
                 // Atualizar o chat no banco de dados
                 await update(chatRef, { idUsers: updatedParticipants });
-    
+
                 console.log('Usuário removido do grupo com sucesso');
-    
+
                 // Redirecionar para a rota de edição do chat com a lista atualizada de participantes
                 navigate(`/${userId}`);
             }
@@ -365,7 +369,7 @@ const ChatBox = () => {
             console.error('Erro ao remover o usuário do grupo:', error);
         }
     };
-    
+
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && e.ctrlKey) {
