@@ -86,6 +86,7 @@ const AddChat = () => {
                         const filteredData = Object.keys(usersData).map((id) => ({
                             id,
                             nome: usersData[id].nome,
+                            status: usersData[id].status,
                         }));
                         setUsers(filteredData);
                     } else {
@@ -400,6 +401,7 @@ const handleSubmit = async () => {
                                     <UserSelect
                                         key={index}
                                         contactName={user.nome}
+                                        contactStatus={user.status}
                                         isSelected={selectedUsers.includes(user.id)}
                                         onSelect={() => handleUserSelect(user.id)}
                                     />
